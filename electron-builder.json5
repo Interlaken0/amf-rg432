@@ -1,0 +1,25 @@
+{
+  appId: 'com.jjconfederation.rg432-test-rig',
+  productName: 'RG432 Test Rig',
+  directories: {
+    output: 'release',
+  },
+  files: [
+    'dist',
+    '!node_modules',
+  ],
+  extraResources: [
+    {
+      from: 'dll',
+      to: 'dll',
+      filter: ['**/*'],
+    },
+  ],
+  win: {
+    target: 'nsis',
+  },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+  },
+}
