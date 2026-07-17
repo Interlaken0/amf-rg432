@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -19,7 +19,13 @@ export function runMigrations(db: Database.Database): void {
   const appliedRows = db.prepare('SELECT id FROM migrations').all() as { id: number }[];
   const appliedIds = new Set(appliedRows.map((row) => row.id));
 
-  const migrationsDir = join(__dirname, 'migrations');
+  // In dev mode, look for migrations in the source directory
+  // In production, look in the compiled dist directory
+  let migrationsDir = join(__dirname, 'migrations');
+  if (!existsSync(migrationsDir)) {
+    migrationsDir = join(__dirname, '../../src/main/migrations');
+  }
+
   const files = readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
     .sort();
