@@ -1,2 +1,7 @@
+node_modules/
+dist/
+release/
+
 PROJECT_INITIATION.md
 AGILE_SDLC_STRATEGY.md
+CI_CD_AND_RELEASES_GUIDE.md
