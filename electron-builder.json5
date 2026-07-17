@@ -1,6 +1,7 @@
 {
   appId: 'com.jjconfederation.rg432-test-rig',
   productName: 'RG432 Test Rig',
+  publish: null,
   directories: {
     output: 'release',
   },
