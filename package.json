@@ -1,6 +1,6 @@
 {
   "name": "rg432-test-rig",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Windows desktop test rig for programming and verifying RG432 audio conversion boards",
   "type": "module",
   "author": "Greg",
