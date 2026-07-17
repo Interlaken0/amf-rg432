@@ -13,8 +13,10 @@
     "build:win": "tsc && vite build && electron-builder --win",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "rebuild:node": "npm rebuild better-sqlite3 koffi",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:changed": "vitest run --changed",
     "prepare": "husky",
     "postinstall": "electron-builder install-app-deps"
   },

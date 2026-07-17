@@ -25,3 +25,7 @@ export function getDatabase(): Database.Database {
   }
   return db;
 }
+
+export function setDatabase(database: Database.Database | null): void {
+  db = database;
+}
