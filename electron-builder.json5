@@ -12,7 +12,7 @@
     {
       from: 'dll',
       to: 'dll',
-      filter: ['**/*'],
+      filter: ['**/*.dll'],
     },
   ],
   win: {

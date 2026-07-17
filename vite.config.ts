@@ -34,6 +34,9 @@ export default defineConfig({
             sourcemap: true,
             minify: false,
             outDir: 'dist/preload',
+            lib: {
+              formats: ['cjs'],
+            },
           },
         },
       },

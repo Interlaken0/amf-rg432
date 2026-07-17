@@ -1,4 +1,4 @@
-import type { BoardRegistration, TestResult } from '../shared/types';
+import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
 
 const registeredBoards: Map<string, BoardRegistration> = new Map();
 const testResults: TestResult[] = [];
@@ -31,4 +31,12 @@ export async function runTest(serialNumber: string): Promise<TestResult> {
 
 export async function getTestHistory(): Promise<TestResult[]> {
   return [...testResults];
+}
+
+export function createMockDllInterop(): DllInterop {
+  return {
+    registerBoard,
+    runTest,
+    getTestHistory,
+  };
 }
