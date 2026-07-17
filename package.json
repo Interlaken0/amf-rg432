@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "test:changed": "vitest run --changed",
     "prepare": "husky",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps && npx electron-rebuild"
   },
   "dependencies": {
     "better-sqlite3": "^12.0.0",
