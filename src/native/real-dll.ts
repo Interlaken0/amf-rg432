@@ -5,9 +5,21 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
 
+/**
+ * DLL file name constant
+ */
 const DLL_FILE_NAME = 'RG432Test1.0.dll';
+
+/**
+ * Maximum path length for Windows
+ */
 const MAX_PATH = 260;
 
+/**
+ * Resolve the path to the DLL file
+ * @returns The absolute path to the DLL
+ * @throws Error if the DLL is not found
+ */
 function resolveDllPath(): string {
   const candidates = [
     join(app.getAppPath(), 'dll', DLL_FILE_NAME),
@@ -29,6 +41,10 @@ function resolveDllPath(): string {
   );
 }
 
+/**
+ * Ensure the results directory exists and configure the registry
+ * @returns The results directory path
+ */
 function ensureResultsPath(): string {
   const resultsPath = join(app.getPath('userData'), 'Results');
   mkdirSync(resultsPath, { recursive: true });
@@ -48,6 +64,12 @@ function ensureResultsPath(): string {
   return resultsPath;
 }
 
+/**
+ * Read the last 4 bytes from a .dat results file
+ * @param filePath The path to the results file
+ * @returns Array of the last 4 bytes
+ * @throws Error if the file cannot be read
+ */
 function readDatBytes(filePath: string): number[] {
   try {
     const buffer = readFileSync(filePath);
@@ -58,6 +80,10 @@ function readDatBytes(filePath: string): number[] {
   }
 }
 
+/**
+ * Create a real DLL interop instance
+ * @returns The real DLL interop instance
+ */
 export function createRealDllInterop(): DllInterop {
   const lib = koffi.load(resolveDllPath());
 
@@ -71,6 +97,11 @@ export function createRealDllInterop(): DllInterop {
     'uint8_t __cdecl GetResult(_Out_ uint16_t *wDetails, _Out_ char *szResultsFile)',
   );
 
+  /**
+   * Call the InitialiseDevice DLL function
+   * @param serialNumber The board serial number
+   * @throws Error if the DLL call fails
+   */
   function callInitialiseDevice(serialNumber: string): void {
     const errorCode = [0];
     const result = initialiseDevice(serialNumber, errorCode);
@@ -82,6 +113,11 @@ export function createRealDllInterop(): DllInterop {
     }
   }
 
+  /**
+   * Call the RunTest DLL function
+   * @param testType The test type (0 for standard test)
+   * @throws Error if the DLL call fails
+   */
   function callRunTest(testType: number): void {
     const errorCode = [0];
     const result = runTestFn(testType, errorCode);
@@ -93,6 +129,11 @@ export function createRealDllInterop(): DllInterop {
     }
   }
 
+  /**
+   * Call the GetResult DLL function
+   * @returns Object containing details and results file path
+   * @throws Error if the DLL call fails
+   */
   function callGetResult(): { details: number; resultsFile: string } {
     const wDetails = [0];
     const resultsBuffer = Buffer.alloc(MAX_PATH);

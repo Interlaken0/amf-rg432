@@ -1,6 +1,11 @@
 import { getDatabase } from './database';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
+/**
+ * Save a board registration to the database
+ * @param registration The board registration details
+ * @returns The ID of the inserted or updated board
+ */
 export function saveBoard(registration: BoardRegistration): number {
   const db = getDatabase();
   const statement = db.prepare(`
@@ -19,6 +24,11 @@ export function saveBoard(registration: BoardRegistration): number {
   return row.id;
 }
 
+/**
+ * Get a board registration by serial number
+ * @param serialNumber The board serial number
+ * @returns The board registration, or undefined if not found
+ */
 export function getBoard(serialNumber: string): BoardRegistration | undefined {
   const db = getDatabase();
   const statement = db.prepare(
@@ -27,6 +37,12 @@ export function getBoard(serialNumber: string): BoardRegistration | undefined {
   return statement.get(serialNumber) as BoardRegistration | undefined;
 }
 
+/**
+ * Get the internal database ID for a board
+ * @param serialNumber The board serial number
+ * @returns The board ID
+ * @throws Error if the board is not registered
+ */
 function getBoardId(serialNumber: string): number {
   const db = getDatabase();
   const statement = db.prepare('SELECT id FROM boards WHERE serial_number = ?');
@@ -37,6 +53,11 @@ function getBoardId(serialNumber: string): number {
   return row.id;
 }
 
+/**
+ * Save a test result to the database
+ * @param result The test result details
+ * @returns The ID of the inserted test
+ */
 export function saveTest(result: TestResult): number {
   const db = getDatabase();
   const boardId = getBoardId(result.serialNumber);
@@ -55,6 +76,10 @@ export function saveTest(result: TestResult): number {
   return row.id;
 }
 
+/**
+ * Get all test results from the database
+ * @returns Array of all test results
+ */
 export function getTests(): TestResult[] {
   const db = getDatabase();
   const statement = db.prepare(`

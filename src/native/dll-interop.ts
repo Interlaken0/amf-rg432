@@ -4,6 +4,10 @@ import type { BoardRegistration, DllInterop, TestResult } from '../shared/types'
 import { createMockDllInterop } from './mock-dll';
 import { createRealDllInterop } from './real-dll';
 
+/**
+ * Check if the real DLL is available on the system
+ * @returns True if the DLL is available, false otherwise
+ */
 function isRealDllAvailable(): boolean {
   if (process.platform !== 'win32') {
     return false;
@@ -21,6 +25,10 @@ function isRealDllAvailable(): boolean {
   return candidates.some(existsSync);
 }
 
+/**
+ * Create a DLL interop instance, using the real DLL if available or falling back to mock
+ * @returns The DLL interop instance
+ */
 export function createDllInterop(): DllInterop {
   if (isRealDllAvailable()) {
     return createRealDllInterop();

@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
+/**
+ * Main application component for the RG432 Test Rig
+ */
 function App() {
   const [serialNumber, setSerialNumber] = useState('');
   const [operator, setOperator] = useState('');
   const [result, setResult] = useState<TestResult | null>(null);
   const [history, setHistory] = useState<TestResult[]>([]);
 
+  /**
+   * Handle board registration
+   */
   const handleRegister = async (): Promise<void> => {
     const registration: BoardRegistration = {
       serialNumber,
@@ -17,6 +23,9 @@ function App() {
     await window.electronAPI.registerBoard(registration);
   };
 
+  /**
+   * Handle test execution
+   */
   const handleTest = async (): Promise<void> => {
     const testResult = await window.electronAPI.runTest(serialNumber);
     setResult(testResult);
