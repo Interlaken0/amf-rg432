@@ -6,52 +6,42 @@ Accepted
 
 ## Context
 
-The test rig must call functions in Jeff's native Windows DLL:
+The test rig needs to call functions in Jeff's native Windows DLL - specifically `InitialiseDevice`, `RunTest`, and `GetResult`. I needed to figure out how to make those calls from our Electron app.
 
-- `InitialiseDevice`
-- `RunTest`
-- `GetResult`
+I looked at a few ways to do this:
 
-Options considered:
-
-- **Koffi**: Modern FFI library for Node.js, supports C function calls
-- **node-ffi-napi**: Older FFI library, less maintained
-- **edge.js**: Requires .NET runtime, not suitable for pure Node
-- **Custom C++ addon**: High maintenance, complex build process
-- **Exec external CLI**: Slow, no direct binary data handling
+- **Koffi** - modern FFI library for Node.js, handles C function calls
+- **node-ffi-napi** - older FFI library, not really maintained anymore
+- **edge.js** - needs .NET runtime, not ideal for a pure Node setup
+- **Custom C++ addon** - high maintenance, complex build process
+- **Exec external CLI** - slow, can't handle binary data directly
 
 ## Decision
 
-Use **Koffi** for native DLL interop.
+I went with **Koffi** for talking to the native DLL.
 
-### Rationale
+### Why this made sense
 
-- Koffi is actively maintained and designed for modern Node.js
-- Supports both synchronous and asynchronous calls
-- Handles C data types and pointers correctly
-- Works with Electron's Node.js runtime
-- No external runtime dependencies (unlike edge.js)
-- Easier to maintain than a custom C++ addon
-- Jeff's DLL exports standard C functions, which Koffi handles well
+Koffi is actively maintained and built for modern Node.js. It handles both synchronous and asynchronous calls, which gives us flexibility. It properly handles C data types and pointers, and works fine with Electron's Node.js runtime. Unlike edge.js, there's no external runtime dependency needed. It's also easier to maintain than writing a custom C++ addon. Since Jeff's DLL exports standard C functions, Koffi handles that well.
 
-## Consequences
+## What this means for us
 
-### Positive
+### The good stuff
 
-- Direct access to DLL functions without intermediate processes
+- Direct access to DLL functions without any intermediate processes
 - Type-safe FFI bindings with TypeScript definitions
-- Good performance for test execution
+- Good performance when running tests
 - Easy to mock for development and testing
 
-### Negative
+### The trade-offs
 
-- Platform-specific (Windows only)
-- Requires rebuilding native bindings for Electron
-- Debugging DLL failures can be harder without source code
+- It's platform-specific, so Windows only
+- Need to rebuild native bindings for Electron
+- Debugging DLL failures can be tricky without the source code
 
-### Mitigations
+### How we're handling the downsides
 
-- Isolate DLL calls behind a mockable interface
-- Use the mock DLL for development and CI on non-Windows platforms
-- Add comprehensive error handling and logging
-- Document the DLL interface clearly in headers
+- Isolating DLL calls behind a mockable interface
+- Using the mock DLL for development and CI on non-Windows platforms
+- Adding comprehensive error handling and logging
+- Documenting the DLL interface clearly in the headers

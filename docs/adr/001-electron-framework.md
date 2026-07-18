@@ -6,50 +6,40 @@ Accepted
 
 ## Context
 
-The RG432 test rig requires a Windows desktop application that can:
+When we started building the RG432 test rig, I needed to figure out what framework to use for the Windows desktop application. The factory operators need a proper UI to work with, and the app has to talk to Jeff's native DLLs, save test results locally, and be installable as a standalone package.
 
-- Communicate with native DLLs via FFI
-- Provide a UI for factory operators
-- Persist test results locally
-- Be packaged as a standalone installer
+I looked at a few options:
 
-Options considered:
-
-- **Electron**: Cross-platform desktop framework using Chromium and Node.js
-- **Tauri**: Lightweight alternative using system webview and Rust
-- **Pure Node with CLI**: No GUI, not suitable for factory environment
-- **Web app with local server**: Requires browser, not suitable for kiosk use
+- **Electron** - uses Chromium and Node.js, works across platforms
+- **Tauri** - lighter weight, uses the system webview and Rust
+- **Pure Node with CLI** - no GUI, which wouldn't work in a factory
+- **Web app with local server** - needs a browser, not great for a kiosk setup
 
 ## Decision
 
-Use **Electron** as the desktop application framework.
+I went with **Electron** for the desktop framework.
 
-### Rationale
+### Why this made sense
 
-- Electron provides full access to Node.js APIs, enabling native DLL interop via Koffi
-- Familiar React-based UI development, aligning with existing web skills
-- Strong ecosystem and tooling (electron-builder for packaging)
-- Windows installer generation is straightforward
-- Supports local file system access and SQLite integration
-- Jeff's existing DLLs are designed for Windows, and Electron is well-supported on Windows
+Electron gives us full access to Node.js APIs, which means we can use Koffi to talk to the native DLLs. I'm already comfortable with React for building UIs, so that fits well with what I know. The ecosystem around Electron is solid too - electron-builder handles packaging nicely, and generating a Windows installer is straightforward. It also lets us work with the local file system and integrate SQLite easily. Since Jeff's DLLs are built for Windows, and Electron has good Windows support, it felt like the right fit.
 
-## Consequences
+## What this means for us
 
-### Positive
+### The good stuff
 
-- Fast development using React and TypeScript
-- Easy debugging with DevTools
-- Native module support (better-sqlite3, Koffi)
-- Single codebase for UI and main process logic
+- We can move fast with React and TypeScript
+- DevTools makes debugging much easier
+- Native modules like better-sqlite3 and Koffi work well
+- One codebase for both the UI and the main process logic
 
-### Negative
+### The trade-offs
 
-- Larger application bundle size due to bundled Chromium
-- Higher memory usage compared to native apps
-- Requires careful security configuration (context isolation, CSP, sandbox)
+- The app bundle will be bigger because Chromium is bundled with it
+- It uses more memory than a native app would
+- We need to be careful with security - context isolation, CSP, sandboxing and all that
 
-### Mitigations
+### How we're handling the downsides
 
-- Use electron-builder to produce a compact NSIS installer
-- Follow Electron security best practices (documented in the security checklist)
-- Keep the UI lightweight to minimise resource usage
+- Using electron-builder to create a compact NSIS installer
+- Following Electron's security best practices (they've got a good checklist)
+- Keeping the UI lightweight to keep resource usage reasonable
