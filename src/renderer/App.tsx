@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { isValidSerial } from '../shared/validation';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
 /**
@@ -33,8 +34,11 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [confirmReRegister, setConfirmReRegister] = useState(false);
 
-  const canRegister = serialNumber.trim().length > 0 && operator.trim().length > 0;
+  const trimmedSerial = serialNumber.trim();
+  const serialInvalid = trimmedSerial.length > 0 && !isValidSerial(trimmedSerial);
+  const canRegister = isValidSerial(trimmedSerial) && operator.trim().length > 0;
   const canTest = serialNumber.trim().length > 0 && !isRunning;
 
   useEffect(() => {
@@ -76,7 +80,7 @@ function App() {
     }
 
     const registration: BoardRegistration = {
-      serialNumber: serialNumber.trim(),
+      serialNumber: trimmedSerial,
       operator: operator.trim(),
       timestamp: new Date().toISOString(),
     };
@@ -84,7 +88,15 @@ function App() {
     setError(null);
     setNotice(null);
     try {
+      if (!confirmReRegister && (await window.electronAPI.isBoardRegistered(trimmedSerial))) {
+        setConfirmReRegister(true);
+        setNotice(
+          `Board ${trimmedSerial} is already registered. Click Confirm Registration to update it.`,
+        );
+        return;
+      }
       await window.electronAPI.registerBoard(registration);
+      setConfirmReRegister(false);
       setNotice(`Board ${registration.serialNumber} registered and ready for testing.`);
     } catch (err) {
       setError(`Registration failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -139,6 +151,11 @@ function App() {
   const buttonPrimary =
     'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm ' +
     'transition hover:bg-indigo-500 active:bg-indigo-700 disabled:cursor-not-allowed ' +
+    'disabled:opacity-40';
+
+  const buttonWarn =
+    'rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm ' +
+    'transition hover:bg-amber-500 active:bg-amber-700 disabled:cursor-not-allowed ' +
     'disabled:opacity-40';
 
   const buttonSecondary =
@@ -205,7 +222,10 @@ function App() {
               <input
                 className={inputClass}
                 value={serialNumber}
-                onChange={(event) => setSerialNumber(event.target.value)}
+                onChange={(event) => {
+                  setSerialNumber(event.target.value);
+                  setConfirmReRegister(false);
+                }}
                 type="text"
                 placeholder="Serial number (e.g. RG432-001)"
                 aria-label="Serial number"
@@ -218,13 +238,18 @@ function App() {
                 placeholder="Operator name"
                 aria-label="Operator name"
               />
+              {serialInvalid && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Letters, numbers and dashes only (3–32 characters), e.g. RG432-001.
+                </p>
+              )}
               <button
                 onClick={handleRegister}
                 type="button"
                 disabled={!canRegister}
-                className={buttonPrimary}
+                className={confirmReRegister ? buttonWarn : buttonPrimary}
               >
-                Register Board
+                {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
               </button>
             </div>
           </section>

@@ -11,6 +11,7 @@ declare global {
     electronAPI: {
       registerBoard: (registration: BoardRegistration) => Promise<void>;
       runTest: (serialNumber: string) => Promise<TestResult>;
+      isBoardRegistered: (serialNumber: string) => Promise<boolean>;
       getTestHistory: () => Promise<TestResult[]>;
       getMockMode: () => Promise<boolean>;
       setMockMode: (enabled: boolean) => Promise<boolean>;
