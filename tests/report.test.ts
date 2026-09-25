@@ -46,11 +46,51 @@ describe('summariseTests', () => {
 describe('buildBatchReportCsv', () => {
   it('includes summary, operator stats and result rows', () => {
     const csv = buildBatchReportCsv(sampleTests, new Date('2026-09-25T12:00:00Z'));
+    expect(csv).toContain('SUMMARY');
+    expect(csv).toContain('OPERATOR BREAKDOWN');
+    expect(csv).toContain('TEST RESULTS');
     expect(csv).toContain('Total Tests,3');
     expect(csv).toContain('Pass Rate,66.7%');
-    expect(csv).toContain('Dave,2,1,1');
-    expect(csv).toContain('Sarah,1,1,0');
-    expect(csv).toContain('1,RG432-0001,Dave,2026-09-20T10:00:00Z,pass');
+    expect(csv).toContain('Dave,2,1,1,50.0%');
+    expect(csv).toContain('Sarah,1,1,0,100.0%');
+    expect(csv).toContain('1,RG432-0001,Dave,2026-09-20 10:00:00,pass');
+  });
+
+  it('splits real-DLL diagnostics into dedicated columns', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 7,
+          serialNumber: 'RG432-0007',
+          operator: 'Dave',
+          timestamp: '2026-09-25T09:00:00Z',
+          status: 'pass',
+          diagnostics:
+            'Details=0x1234, measurements=[6,0,6,4], file=C:\\Users\\Greg\\AppData\\Roaming\\rg432-test-rig\\results\\260925-090000-RG432-0007.dat',
+        },
+      ],
+      new Date(),
+    );
+    expect(csv).toContain(
+      '7,RG432-0007,Dave,2026-09-25 09:00:00,pass,0x1234,"6, 0, 6, 4",260925-090000-RG432-0007.dat,',
+    );
+  });
+
+  it('keeps unrecognised diagnostics in the notes column', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 8,
+          serialNumber: 'RG432-0008',
+          operator: 'Dave',
+          timestamp: 't',
+          status: 'fail',
+          diagnostics: 'Mock failure: simulated DLL returned error flag 0x01',
+        },
+      ],
+      new Date(),
+    );
+    expect(csv).toContain(',Mock failure: simulated DLL returned error flag 0x01');
   });
 
   it('escapes commas and quotes in cell values', () => {

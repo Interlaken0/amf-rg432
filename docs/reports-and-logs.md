@@ -12,19 +12,26 @@ RFC-4180-style quoting, CRLF line endings for Excel compatibility.
 
 ### Structure
 
+The report is split into three labelled sections: a run summary, a
+per-operator breakdown, then the detail rows.
+
 ```csv
 RG432 Test Rig - Batch Report
-Generated,2026-09-25T15:02:08.113Z
+Generated,2026-09-25 15:02:08
+
+SUMMARY
 Total Tests,10
 Passed,9
 Failed,1
 Pass Rate,90.0%
 
-Operator,Total,Passed,Failed
-Greg,10,9,1
+OPERATOR BREAKDOWN
+Operator,Tests,Passed,Failed,Pass Rate
+Greg,10,9,1,90.0%
 
-ID,Serial Number,Operator,Tested At,Status,Diagnostics
-10,RG432-003,Greg,2026-09-25T14:40:24.958Z,pass,"Details=0x1234, measurements=[0,0,3,0], file=C:\...\260925-144024-RG432-003.dat"
+TEST RESULTS
+ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes
+10,RG432-003,Greg,2026-09-25 14:40:24,pass,0x1234,"0, 0, 3, 0",260925-144024-RG432-003.dat,
 ```
 
 ### Conventions
@@ -36,9 +43,14 @@ ID,Serial Number,Operator,Tested At,Status,Diagnostics
   converts long numeric serials to scientific notation (`1.11E+10`) and loses
   precision past 15 digits. The `="..."` form is also the standard CSV
   formula-injection mitigation.
-- **Diagnostics column** contains the raw `Details` word, the parsed
-  measurement bytes, and the `.dat` file path — traceable back to the source
-  artefact documented in `docs/results-file-format.md`.
+- **Timestamps are human-readable** (`YYYY-MM-DD HH:mm:ss` UTC) rather than
+  raw ISO strings.
+- **Diagnostics are split into columns** — real-DLL records unpack into
+  `Result Code` (the `wDetails` word), `Measurements` (the four bytes), and
+  `Results File` (the `.dat` filename only — the folder is always
+  `<userData>/results`, so the full path adds noise). Mock failures and other
+  messages land in `Notes` unchanged. Everything still traces back to the
+  source artefact in `docs/results-file-format.md`.
 - Aggregation runs in `summariseTests()` over the result set already fetched
   for the detail section — one query, one aggregation pass.
 
