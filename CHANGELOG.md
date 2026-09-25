@@ -26,3 +26,4 @@ All notable changes to this project will be documented in this file.
 ### CI
 - Run pipeline on sprint branches
 - Fetch full history in checkout so commitlint can compare HEAD~1..HEAD
+- Add automatic changelog and version update on main branch pushes
