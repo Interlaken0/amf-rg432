@@ -12,12 +12,13 @@ RFC-4180-style quoting, CRLF line endings for Excel compatibility.
 
 ### Structure
 
-The report is split into three labelled sections: a run summary, a
-per-operator breakdown, then the detail rows.
+The report is split into labelled sections: a run summary, a per-operator
+breakdown, a dedicated failure list, then the full chronological log.
 
 ```csv
 RG432 Test Rig - Batch Report
-Generated,2026-09-25 15:02:08
+Generated,25/09/2026 15:02:08
+Period,17/07/2026 to 25/09/2026
 
 SUMMARY
 Total Tests,10
@@ -29,9 +30,13 @@ OPERATOR BREAKDOWN
 Operator,Tests,Passed,Failed,Pass Rate
 Greg,10,9,1,90.0%
 
+FAILED TESTS
+ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes
+6,RG432-007,Greg,24/09/2026 09:15:31,fail,0x00ff,"9, 0, 3, 0",260924-091531-RG432-007.dat,
+
 TEST RESULTS
 ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes
-10,RG432-003,Greg,2026-09-25 14:40:24,pass,0x1234,"0, 0, 3, 0",260925-144024-RG432-003.dat,
+10,RG432-003,Greg,25/09/2026 14:40:24,pass,0x1234,"0, 0, 3, 0",260925-144024-RG432-003.dat,
 ```
 
 ### Conventions
@@ -39,12 +44,19 @@ ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File
 - **Operator grouping is case-insensitive** — `Greg` and `greg` merge into a
   single row, keeping the first-seen casing. Prevents split statistics when
   operators capitalise inconsistently.
-- **All-digit serial numbers are emitted as `="serial"`** — otherwise Excel
-  converts long numeric serials to scientific notation (`1.11E+10`) and loses
-  precision past 15 digits. The `="..."` form is also the standard CSV
-  formula-injection mitigation.
-- **Timestamps are human-readable** (`YYYY-MM-DD HH:mm:ss` UTC) rather than
-  raw ISO strings.
+- **All-digit serial numbers are emitted as `SN-<digits>`** — Excel's CSV
+  import still number-converts the `="serial"` formula trick on current
+  builds (scientific notation, `12,345` separators, precision loss past 15
+  digits). A non-numeric prefix is the only representation it cannot mangle.
+  Alphanumeric serials like `RG432-001` are emitted unchanged.
+- **Failures are pulled into their own section** — the part a supervisor
+  reads first — while TEST RESULTS still lists every attempt newest-first,
+  so a failed board followed by a passing retest stays visible in sequence.
+  `None` is emitted when the period had no failures.
+- **Detail rows are newest-first** and the header carries a `Period` line
+  covering the earliest-to-latest test date.
+- **Timestamps are human-readable UK format** (`DD/MM/YYYY HH:mm:ss`, UTC)
+  rather than raw ISO strings.
 - **Diagnostics are split into columns** — real-DLL records unpack into
   `Result Code` (the `wDetails` word), `Measurements` (the four bytes), and
   `Results File` (the `.dat` filename only — the folder is always

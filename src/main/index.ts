@@ -147,8 +147,19 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
     saveTest(resultWithOperator);
     return resultWithOperator;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     const logPath = diagnostics.write(`run-test serial=${serialNumber}`, error);
-    throw new Error(`Test failed: ${error instanceof Error ? error.message : String(error)}. Diagnostic log: ${logPath}`);
+    // Record the aborted attempt - a board that errored mid-test still
+    // needs a traceable record, so it is saved as a fail.
+    saveTest({
+      id: 0,
+      serialNumber,
+      operator: board.operator,
+      timestamp: new Date().toISOString(),
+      status: 'fail',
+      diagnostics: `Test aborted: ${message} (diagnostic log: ${logPath})`,
+    });
+    throw new Error(`Test failed: ${message}. Diagnostic log: ${logPath}`);
   }
 });
 

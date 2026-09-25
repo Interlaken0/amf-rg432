@@ -14,6 +14,12 @@ export interface MockDllOptions {
    * throwing an error like a real hardware fault would.
    */
   disconnectRate?: number;
+  /**
+   * Probability (0-1) that a completed test returns a fail result.
+   * Higher while demoing so the FAIL path is easy to show; the real
+   * failure rate is whatever the production boards produce.
+   */
+  failRate?: number;
 }
 
 /**
@@ -50,17 +56,18 @@ export async function registerBoard(registration: BoardRegistration): Promise<vo
 /**
  * Run a mock test for a board
  * @param serialNumber The board serial number
- * @returns The test result (90% pass rate for simulation)
+ * @param failRate Probability (0-1) of a fail result
+ * @returns The test result
  * @throws Error if the board has not been registered
  */
-export async function runTest(serialNumber: string): Promise<TestResult> {
+export async function runTest(serialNumber: string, failRate = 0.5): Promise<TestResult> {
   const board = registeredBoards.get(serialNumber);
 
   if (!board) {
     throw new Error(`Board ${serialNumber} has not been registered`);
   }
 
-  const isPass = Math.random() > 0.1;
+  const isPass = Math.random() >= failRate;
   const result: TestResult = {
     id: resultId++,
     serialNumber,
@@ -79,7 +86,7 @@ export async function runTest(serialNumber: string): Promise<TestResult> {
  * @returns The mock DLL interop instance
  */
 export function createMockDllInterop(options?: MockDllOptions): DllInterop {
-  const { simulateTiming = true, disconnectRate = 0.05 } = options ?? {};
+  const { simulateTiming = true, disconnectRate = 0.05, failRate = 0.5 } = options ?? {};
 
   return {
     /**
@@ -114,7 +121,7 @@ export function createMockDllInterop(options?: MockDllOptions): DllInterop {
         }
       }
 
-      return runTest(serialNumber);
+      return runTest(serialNumber, failRate);
     },
   };
 }

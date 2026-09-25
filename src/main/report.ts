@@ -66,20 +66,22 @@ function csvCell(value: string): string {
 
 /**
  * Format a serial number for CSV output
- * All-digit serials are wrapped as a literal string so Excel does not
- * convert them to scientific notation or lose precision (>15 digits)
+ * Pure-digit serials are prefixed so Excel cannot convert them to a
+ * number (scientific notation, thousands separators or >15-digit
+ * precision loss). The ="serial" formula trick is not reliable on
+ * current Excel builds - the result still gets number-converted.
  * @param value The serial number
  * @returns The CSV-safe value
  */
 function csvSerial(value: string): string {
   if (/^\d+$/.test(value)) {
-    return `="${value}"`;
+    return `SN-${value}`;
   }
   return csvCell(value);
 }
 
 /**
- * Format a timestamp for the report as YYYY-MM-DD HH:mm:ss (UTC)
+ * Format a timestamp for the report as DD/MM/YYYY HH:mm:ss (UTC)
  * @param value The ISO timestamp
  * @returns The readable timestamp
  */
@@ -88,7 +90,18 @@ function csvTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  const [day, time] = date.toISOString().split('T');
+  const [year, month, dateOfMonth] = day.split('-');
+  return `${dateOfMonth}/${month}/${year} ${time.slice(0, 8)}`;
+}
+
+/**
+ * Format a timestamp as DD/MM/YYYY (UTC)
+ * @param ms Epoch milliseconds
+ * @returns The readable date
+ */
+function csvDate(ms: number): string {
+  return csvTimestamp(new Date(ms).toISOString()).slice(0, 10);
 }
 
 /**
@@ -136,10 +149,19 @@ function parseDiagnostics(diagnostics?: string): ParsedDiagnostics {
  */
 export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): string {
   const summary = summariseTests(tests);
+  const sorted = [...tests].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime() || b.id - a.id,
+  );
+  const dates = sorted
+    .map((t) => new Date(t.timestamp).getTime())
+    .filter((t) => !Number.isNaN(t));
   const lines: string[] = [];
 
   lines.push('RG432 Test Rig - Batch Report');
   lines.push(`Generated,${csvTimestamp(generatedAt.toISOString())}`);
+  if (dates.length > 0) {
+    lines.push(`Period,${csvDate(Math.min(...dates))} to ${csvDate(Math.max(...dates))}`);
+  }
   lines.push('');
 
   lines.push('SUMMARY');
@@ -157,23 +179,42 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
   }
   lines.push('');
 
-  lines.push('TEST RESULTS');
-  lines.push('ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes');
-  for (const test of tests) {
+  const detailHeader =
+    'ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes';
+  const detailRow = (test: TestResult): string => {
     const diag = parseDiagnostics(test.diagnostics);
-    lines.push(
-      [
-        String(test.id),
-        csvSerial(test.serialNumber),
-        csvCell(test.operator),
-        csvTimestamp(test.timestamp),
-        test.status,
-        diag.resultCode,
-        csvCell(diag.measurements),
-        csvCell(diag.resultsFile),
-        csvCell(diag.notes),
-      ].join(','),
-    );
+    return [
+      String(test.id),
+      csvSerial(test.serialNumber),
+      csvCell(test.operator),
+      csvTimestamp(test.timestamp),
+      test.status,
+      diag.resultCode,
+      csvCell(diag.measurements),
+      csvCell(diag.resultsFile),
+      csvCell(diag.notes),
+    ].join(',');
+  };
+
+  // Failures get their own section - that is what a supervisor reads
+  // first - while the full log keeps every attempt in sequence so
+  // retests stay visible next to the runs they followed.
+  const failed = sorted.filter((t) => t.status === 'fail');
+  lines.push('FAILED TESTS');
+  if (failed.length === 0) {
+    lines.push('None');
+  } else {
+    lines.push(detailHeader);
+    for (const test of failed) {
+      lines.push(detailRow(test));
+    }
+  }
+  lines.push('');
+
+  lines.push('TEST RESULTS');
+  lines.push(detailHeader);
+  for (const test of sorted) {
+    lines.push(detailRow(test));
   }
 
   return lines.join('\r\n');
