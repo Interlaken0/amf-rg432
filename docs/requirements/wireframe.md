@@ -1,62 +1,54 @@
 # Wireframe — Operator Interface
 
-Approved UI layout for the board registration and test initiation screen, designed
-around the Dave persona (factory operator — needs a simple, unambiguous interface
-that works with gloves-on factory conditions) and User Stories 1–4 in
-`docs/requirements/user-stories.md`.
+UI layout for the board registration and test screen, designed around the Dave
+persona (factory operator — needs a simple, unambiguous interface that works in
+factory conditions) and User Stories 1–4 in `docs/requirements/user-stories.md`.
+Updated September 2026 to document the as-built Tailwind interface.
 
 ## Layout
 
 ```
-+------------------------------------------------------------------+
-|  AMF RG432 Test Rig                                              |
-|                                                                  |
-|  [x] Mock mode (simulate hardware without DLL)                   |
-|                                                                  |
-|  (alert/error banner appears here when something goes wrong)     |
-|                                                                  |
-|  Board Registration                                              |
-|  +------------------+                                            |
-|  | Serial Number    |  [____________________]                    |
-|  | Operator         |  [____________________]                    |
-|  |                  |  ( Register Board )                        |
-|  +------------------+                                            |
-|                                                                  |
-|  Run Test                                                        |
-|  +------------------+                                            |
-|  | (  Start Test  ) |  "Test in progress, please wait…"          |
-|  |                  |  Result: PASS / FAIL + diagnostics         |
-|  +------------------+                                            |
-|                                                                  |
-|  Reports                                                         |
-|  +------------------+                                            |
-|  | (Export Batch    |                                            |
-|  |       Report)    |                                            |
-|  +------------------+                                            |
-|                                                                  |
-|  Test History                                                    |
-|  +------------------+                                            |
-|  | RG432-0001 - pass - Dave                                      |
-|  | RG432-0002 - fail - Sarah                                     |
-|  | ...                                                          |
-|  +------------------+                                            |
-+------------------------------------------------------------------+
++--------------------------------------------------------------------------------+
+|  AMF RG432 Test Rig                          (o) Mock mode   [Dark/Light]       |  header
++----------------------------------+---------------------------------------------+
+|  BOARD REGISTRATION              |  (error/success banner when needed)          |
+|  +----------------------------+  |                                             |
+|  | Serial number (RG432-001)  |  |  TEST HISTORY      [search...] [Export CSV]  |
+|  +----------------------------+  |  +-----------------------------------------+|
+|  | Operator name              |  |  | Serial        Status   Operator  Time   ||
+|  +----------------------------+  |  | RG432-003    (● pass)  Greg     14:30   ||
+|  | ( Register Board )         |  |  | RG432-002    (● fail)  Greg     14:25   ||
+|  +----------------------------+  |  +-----------------------------------------+|
+|                                  |                                             |
+|  RUN TEST                        |                                             |
+|  +----------------------------+  |                                             |
+|  | (      Start Test      )   |  |                                             |
+|  |  spinner "in progress…"    |  |                                             |
+|  | +------------------------+ |  |                                             |
+|  | |        ✓ PASS          | |  |   large green/red result badge             |
+|  | |  Details=0x1234, …     | |  |   + diagnostics                            |
+|  | +------------------------+ |  |                                             |
+|  +----------------------------+  |                                             |
++----------------------------------+---------------------------------------------+
 ```
 
 ## Components identified
 
 | Component | Purpose | Traceability |
 |-----------|---------|--------------|
-| Mock mode toggle | Switch between real DLL and simulation | User story: develop/test without hardware; Sarah's visibility requirement |
+| Mock mode switch | Switch between real DLL and simulation | User story: develop/test without hardware |
+| Theme toggle | Light/dark appearance | Operator preference; factory lighting varies |
 | Serial Number input | Board identifier entry/scan | User Story 1; Use Case 1 step 1 |
 | Operator input | Records who ran the work | User Story 1; K8 data protection note in ADR 002 |
 | Register Board button | Persists board; disabled until valid | Use Case 1 steps 3–4 |
+| Registration confirmation | Success banner after registering | Use Case 1 step 6 |
 | Start Test button | Triggers test; disabled while running | Use Case 2 step 2 |
-| Progress indicator | "Test in progress" during the ~4s run | Use Case 2 step 3; Dave needs obvious feedback |
-| Result display | Pass/Fail + diagnostics | Use Case 2 steps 6–7 |
+| Progress spinner | Animated indicator during the ~7s run | Use Case 2 step 3; Dave needs obvious feedback |
+| PASS/FAIL badge | Large colour-coded result (emerald/rose) + diagnostics | Use Case 2 steps 6–7; Use Case 3; User Story "obvious visual feedback" |
 | Error banner | Operator-readable failure messages incl. diagnostic log path | Use Case 2 alternative 4a |
-| Export Batch Report | Saves CSV report via save dialog | Use Case 5 |
-| Test History list | Persistent record of all tests | Use Case 4 |
+| History search field | Filters records by serial, operator, or status | Use Case 4; User Story "search test history" |
+| History table | Persistent record with status pills | Use Case 4 |
+| Export CSV button | Saves batch report via save dialog | Use Case 4 alternative 3b; Use Case 5 |
 
 ## Design decisions
 
@@ -64,5 +56,9 @@ that works with gloves-on factory conditions) and User Stories 1–4 in
   reachable without menus (persona: minimal training, works fast).
 - **Buttons disable rather than error** — invalid states are prevented before
   they can fail.
-- **Persistent history on screen** — gives Dave and Sarah immediate confidence
-  that results were recorded (traceability requirement).
+- **Giant colour-coded result** — a plain-text status was an accessibility risk
+  in a noisy factory; the badge is unambiguous at arm's length.
+- **Searchable history** — Sarah's audit workflow needs filtering, not scrolling.
+- **Light/dark themes** — factory PCs run in variable lighting; the toggle
+  persists across restarts and defaults to the OS preference.
+- **Tailwind utility styling** — see ADR 008 for the styling decision.
