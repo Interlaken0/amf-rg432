@@ -1,4 +1,4 @@
-import { getDatabase } from './database';
+import { getDatabase } from './db-instance';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
 /**
