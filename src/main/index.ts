@@ -12,6 +12,7 @@ import {
   getTests,
 } from './test-repository';
 import { createDllInterop } from '../native/dll-interop';
+import { createSettingsStore } from './settings';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -71,9 +72,32 @@ app.on('window-all-closed', () => {
 });
 
 /**
+ * Application settings store persisted to userData
+ */
+const settings = createSettingsStore(
+  join(app.getPath('userData'), 'settings.json'),
+);
+
+/**
  * DLL interop instance for hardware communication
  */
-const dllInterop = createDllInterop();
+let dllInterop = createDllInterop({ forceMock: settings.get().mockMode });
+
+/**
+ * IPC handler for getting the current mock mode setting
+ */
+ipcMain.handle('get-mock-mode', async (): Promise<boolean> => {
+  return settings.get().mockMode;
+});
+
+/**
+ * IPC handler for toggling mock mode
+ */
+ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolean> => {
+  const updated = settings.setMockMode(enabled);
+  dllInterop = createDllInterop({ forceMock: updated.mockMode });
+  return updated.mockMode;
+});
 
 /**
  * IPC handler for board registration

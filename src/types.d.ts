@@ -12,6 +12,8 @@ declare global {
       registerBoard: (registration: BoardRegistration) => Promise<void>;
       runTest: (serialNumber: string) => Promise<TestResult>;
       getTestHistory: () => Promise<TestResult[]>;
+      getMockMode: () => Promise<boolean>;
+      setMockMode: (enabled: boolean) => Promise<boolean>;
     };
   }
 }

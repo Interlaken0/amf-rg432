@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
 /**
@@ -9,6 +9,19 @@ function App() {
   const [operator, setOperator] = useState('');
   const [result, setResult] = useState<TestResult | null>(null);
   const [history, setHistory] = useState<TestResult[]>([]);
+  const [mockMode, setMockMode] = useState(false);
+
+  useEffect(() => {
+    window.electronAPI.getMockMode().then(setMockMode);
+    window.electronAPI.getTestHistory().then(setHistory);
+  }, []);
+
+  /**
+   * Handle mock mode toggle
+   */
+  const handleMockToggle = async (enabled: boolean): Promise<void> => {
+    setMockMode(await window.electronAPI.setMockMode(enabled));
+  };
 
   /**
    * Handle board registration
@@ -36,6 +49,17 @@ function App() {
   return (
     <main style={{ padding: '1rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1>AMF RG432 Test Rig</h1>
+
+      <section style={{ marginBottom: '1rem' }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={mockMode}
+            onChange={(event) => handleMockToggle(event.target.checked)}
+          />
+          {' '}Mock mode (simulate hardware without DLL)
+        </label>
+      </section>
 
       <section style={{ marginBottom: '1rem' }}>
         <h2>Board Registration</h2>

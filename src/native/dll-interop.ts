@@ -26,11 +26,19 @@ function isRealDllAvailable(): boolean {
 }
 
 /**
+ * Options for creating a DLL interop instance
+ */
+export interface DllInteropOptions {
+  forceMock?: boolean;
+}
+
+/**
  * Create a DLL interop instance, using the real DLL if available or falling back to mock
+ * @param options Options controlling which interop to create
  * @returns The DLL interop instance
  */
-export function createDllInterop(): DllInterop {
-  if (isRealDllAvailable()) {
+export function createDllInterop(options?: DllInteropOptions): DllInterop {
+  if (!options?.forceMock && isRealDllAvailable()) {
     return createRealDllInterop();
   }
   return createMockDllInterop();

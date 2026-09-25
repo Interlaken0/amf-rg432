@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('register-board', registration),
   runTest: (serialNumber: string) => ipcRenderer.invoke('run-test', serialNumber),
   getTestHistory: () => ipcRenderer.invoke('get-test-history'),
+  getMockMode: () => ipcRenderer.invoke('get-mock-mode'),
+  setMockMode: (enabled: boolean) => ipcRenderer.invoke('set-mock-mode', enabled),
 });
