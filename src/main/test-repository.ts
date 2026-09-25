@@ -94,12 +94,12 @@ export function getTestStatsByOperator(): OperatorStats[] {
   const db = getDatabase();
   const statement = db.prepare(`
     SELECT
-      operator,
+      MIN(operator) AS operator,
       COUNT(*) AS total,
       SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) AS passed,
       SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) AS failed
     FROM tests
-    GROUP BY operator
+    GROUP BY operator COLLATE NOCASE
     ORDER BY total DESC
   `);
   return statement.all() as OperatorStats[];

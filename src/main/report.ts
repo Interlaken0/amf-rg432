@@ -8,7 +8,7 @@ export interface BatchSummary {
   passed: number;
   failed: number;
   passRate: number;
-  byOperator: Record<string, { total: number; passed: number; failed: number }>;
+  byOperator: Record<string, { name: string; total: number; passed: number; failed: number }>;
 }
 
 /**
@@ -32,14 +32,20 @@ export function summariseTests(tests: TestResult[]): BatchSummary {
       summary.failed++;
     }
 
-    const op = summary.byOperator[test.operator] ?? { total: 0, passed: 0, failed: 0 };
+    const opKey = test.operator.trim().toLowerCase();
+    const op = summary.byOperator[opKey] ?? {
+      name: test.operator.trim(),
+      total: 0,
+      passed: 0,
+      failed: 0,
+    };
     op.total++;
     if (test.status === 'pass') {
       op.passed++;
     } else if (test.status === 'fail') {
       op.failed++;
     }
-    summary.byOperator[test.operator] = op;
+    summary.byOperator[opKey] = op;
   }
 
   summary.passRate = summary.total > 0 ? summary.passed / summary.total : 0;
@@ -56,6 +62,20 @@ function csvCell(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+/**
+ * Format a serial number for CSV output
+ * All-digit serials are wrapped as a literal string so Excel does not
+ * convert them to scientific notation or lose precision (>15 digits)
+ * @param value The serial number
+ * @returns The CSV-safe value
+ */
+function csvSerial(value: string): string {
+  if (/^\d+$/.test(value)) {
+    return `="${value}"`;
+  }
+  return csvCell(value);
 }
 
 /**
@@ -77,8 +97,8 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
   lines.push('');
 
   lines.push('Operator,Total,Passed,Failed');
-  for (const [operator, stats] of Object.entries(summary.byOperator)) {
-    lines.push(`${csvCell(operator)},${stats.total},${stats.passed},${stats.failed}`);
+  for (const stats of Object.values(summary.byOperator)) {
+    lines.push(`${csvCell(stats.name)},${stats.total},${stats.passed},${stats.failed}`);
   }
   lines.push('');
 
@@ -87,7 +107,7 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
     lines.push(
       [
         String(test.id),
-        csvCell(test.serialNumber),
+        csvSerial(test.serialNumber),
         csvCell(test.operator),
         csvCell(test.timestamp),
         test.status,
