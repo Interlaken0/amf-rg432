@@ -12,6 +12,7 @@ function App() {
   const [mockMode, setMockMode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const canRegister = serialNumber.trim().length > 0 && operator.trim().length > 0;
   const canTest = serialNumber.trim().length > 0 && !isRunning;
@@ -68,9 +69,25 @@ function App() {
       setResult(testResult);
       setHistory(await window.electronAPI.getTestHistory());
     } catch (err) {
-      setError(`Test failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  /**
+   * Handle batch report export
+   */
+  const handleExportReport = async (): Promise<void> => {
+    setError(null);
+    setNotice(null);
+    try {
+      const path = await window.electronAPI.exportBatchReport();
+      if (path) {
+        setNotice(`Batch report saved to ${path}`);
+      }
+    } catch (err) {
+      setError(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -87,6 +104,8 @@ function App() {
           />
           {' '}Mock mode (simulate hardware without DLL)
         </label>
+        {error && <p role="alert" style={{ color: 'crimson' }}>{error}</p>}
+        {notice && <p role="status" style={{ color: 'green' }}>{notice}</p>}
       </section>
 
       <section style={{ marginBottom: '1rem' }}>
@@ -118,13 +137,19 @@ function App() {
           {isRunning ? 'Running…' : 'Start Test'}
         </button>
         {isRunning && <p role="status">Test in progress, please wait…</p>}
-        {error && <p role="alert" style={{ color: 'crimson' }}>{error}</p>}
         {result && (
           <div>
             <p>Status: {result.status}</p>
             {result.diagnostics && <p>Diagnostics: {result.diagnostics}</p>}
           </div>
         )}
+      </section>
+
+      <section style={{ marginBottom: '1rem' }}>
+        <h2>Reports</h2>
+        <button onClick={handleExportReport} type="button">
+          Export Batch Report
+        </button>
       </section>
 
       <section>

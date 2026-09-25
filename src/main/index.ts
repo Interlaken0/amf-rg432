@@ -1,9 +1,10 @@
 /**
  * Main Electron process entry point
  */
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { initialiseDatabase } from './database';
 import {
   getBoard,
@@ -13,6 +14,8 @@ import {
 } from './test-repository';
 import { createDllInterop } from '../native/dll-interop';
 import { createSettingsStore } from './settings';
+import { createDiagnosticLogger } from './diagnostics';
+import { buildBatchReportCsv } from './report';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -79,6 +82,11 @@ const settings = createSettingsStore(
 );
 
 /**
+ * Diagnostic logger writing to the userData logs directory
+ */
+const diagnostics = createDiagnosticLogger(join(app.getPath('userData'), 'logs'));
+
+/**
  * DLL interop instance for hardware communication
  */
 let dllInterop = createDllInterop({ forceMock: settings.get().mockMode });
@@ -103,8 +111,13 @@ ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolea
  * IPC handler for board registration
  */
 ipcMain.handle('register-board', async (_event, registration: BoardRegistration): Promise<void> => {
-  await dllInterop.registerBoard(registration);
-  saveBoard(registration);
+  try {
+    await dllInterop.registerBoard(registration);
+    saveBoard(registration);
+  } catch (error) {
+    const logPath = diagnostics.write(`register-board serial=${registration.serialNumber}`, error);
+    throw new Error(`Registration failed: ${error instanceof Error ? error.message : String(error)}. Diagnostic log: ${logPath}`);
+  }
 });
 
 /**
@@ -116,10 +129,15 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
     throw new Error(`Board ${serialNumber} has not been registered`);
   }
 
-  const result = await dllInterop.runTest(serialNumber);
-  const resultWithOperator = { ...result, operator: board.operator };
-  saveTest(resultWithOperator);
-  return resultWithOperator;
+  try {
+    const result = await dllInterop.runTest(serialNumber);
+    const resultWithOperator = { ...result, operator: board.operator };
+    saveTest(resultWithOperator);
+    return resultWithOperator;
+  } catch (error) {
+    const logPath = diagnostics.write(`run-test serial=${serialNumber}`, error);
+    throw new Error(`Test failed: ${error instanceof Error ? error.message : String(error)}. Diagnostic log: ${logPath}`);
+  }
 });
 
 /**
@@ -127,4 +145,28 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
  */
 ipcMain.handle('get-test-history', async (): Promise<TestResult[]> => {
   return getTests();
+});
+
+/**
+ * IPC handler for exporting a batch report CSV via a save dialog
+ */
+ipcMain.handle('export-batch-report', async (): Promise<string | null> => {
+  if (!mainWindow) {
+    return null;
+  }
+
+  const date = new Date().toISOString().slice(0, 10);
+  const saveResult = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Batch Report',
+    defaultPath: `rg432-batch-report-${date}.csv`,
+    filters: [{ name: 'CSV Report', extensions: ['csv'] }],
+  });
+
+  if (saveResult.canceled || !saveResult.filePath) {
+    return null;
+  }
+
+  const csv = buildBatchReportCsv(getTests(), new Date());
+  writeFileSync(saveResult.filePath, csv);
+  return saveResult.filePath;
 });

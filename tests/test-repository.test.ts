@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../src/main/migrations';
 import { setDatabase } from '../src/main/database';
-import { saveBoard, getBoard, saveTest, getTests } from '../src/main/test-repository';
+import { saveBoard, getBoard, saveTest, getTests, getTestStatsByOperator } from '../src/main/test-repository';
 
 /**
  * Test suite for test repository functions
@@ -109,5 +109,22 @@ describe('test repository', () => {
     };
 
     expect(() => saveTest(result)).toThrow('Board UNKNOWN-001 is not registered');
+  });
+
+  /**
+   * Test that getTestStatsByOperator aggregates pass/fail counts per operator
+   */
+  it('aggregates test statistics by operator', () => {
+    saveBoard({ serialNumber: 'RG432-004', operator: 'Dave', timestamp: '2026-01-01T00:00:00.000Z' });
+    saveTest({ id: 0, serialNumber: 'RG432-004', operator: 'Dave', timestamp: '2026-01-02T00:00:00.000Z', status: 'pass' as const });
+    saveTest({ id: 0, serialNumber: 'RG432-004', operator: 'Dave', timestamp: '2026-01-03T00:00:00.000Z', status: 'fail' as const });
+    saveTest({ id: 0, serialNumber: 'RG432-004', operator: 'Sarah', timestamp: '2026-01-03T00:00:00.000Z', status: 'pass' as const });
+
+    const stats = getTestStatsByOperator();
+    const dave = stats.find((s) => s.operator === 'Dave');
+    const sarah = stats.find((s) => s.operator === 'Sarah');
+
+    expect(dave).toEqual({ operator: 'Dave', total: 2, passed: 1, failed: 1 });
+    expect(sarah).toEqual({ operator: 'Sarah', total: 1, passed: 1, failed: 0 });
   });
 });
