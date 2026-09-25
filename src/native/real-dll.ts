@@ -291,7 +291,5 @@ export function createRealDllInterop(): DllInterop {
         diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${measurements.join(',')}], file=${resultsFile}`,
       };
     },
-
-    getTestHistory: async (): Promise<TestResult[]> => [],
   };
 }
