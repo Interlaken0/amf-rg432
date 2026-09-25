@@ -17,6 +17,8 @@
 | UAT-06 | | |
 | UAT-07 | | |
 | UAT-08 | | |
+| UAT-09 | | |
+| UAT-10 | | |
 
 ---
 
@@ -25,14 +27,14 @@
 **Covers:** installer packaging
 **Given** a clean Windows PC with the `AMF RG432 Test Rig` installer
 **When** the installer is run and the app is launched
-**Then** the main window opens showing AMF RG432 Test Rig with the registration form, run test section, reports section, and test history
+**Then** the main window opens showing AMF RG432 Test Rig with the header (mock-mode switch, theme toggle), registration and run-test panels, and the test history table
 
 ## UAT-02: Register a board
 
 **Covers:** Use Case 1
 **Given** the application is running with mock mode enabled
 **When** I enter serial `RG432-UAT01` and operator `Jeff`, then click **Register Board**
-**Then** the board is registered without error and available for testing
+**Then** a confirmation banner shows the board is registered and ready for testing
 
 ## UAT-03: Registration validation
 
@@ -46,7 +48,7 @@
 **Covers:** Use Case 2
 **Given** board `RG432-UAT01` is registered and mock mode is enabled
 **When** I click **Start Test**
-**Then** a "Test in progress" indicator shows while the test runs (~4s in mock mode), the button is disabled during the run, and a Pass or Fail result is displayed and stored
+**Then** a spinner and "Test in progress" message show while the test runs (~4s in mock mode), the button is disabled during the run, and a large colour-coded **PASS** (green) or **FAIL** (red) badge is displayed and the result is stored
 
 ## UAT-05: Test blocked for unregistered board
 
@@ -67,14 +69,28 @@
 **Covers:** Use Case 4 (history)
 **Given** several tests have been run
 **When** I restart the application
-**Then** the Test History list still shows the previous results with serial, status and operator
+**Then** the Test History table still shows the previous results with serial, status and operator
 
 ## UAT-08: Export batch report
 
 **Covers:** Use Case 5 (reporting); Sprint 4 batch reports
 **Given** the database contains test results (run `npm run seed` beforehand for realistic data if needed)
-**When** I click **Export Batch Report** and choose a save location
-**Then** a CSV file is written containing the summary totals, per-operator breakdown, and every test row, and it opens cleanly in Excel
+**When** I click **Export CSV** and choose a save location
+**Then** a CSV file is written containing the summary totals, per-operator breakdown (case-insensitive grouping), and every test row, and it opens cleanly in Excel with serial numbers intact (all-digit serials display as text, not scientific notation)
+
+## UAT-09: Search test history
+
+**Covers:** Use Case 4 (search); user story "Search test history by serial number"
+**Given** at least two test records exist with different serial numbers
+**When** I type part of a serial number into the history search field
+**Then** only matching records are shown, and clearing the search restores the full list
+
+## UAT-10: Light/dark theme toggle
+
+**Covers:** operator UI preference (Sprint 4 UI work)
+**Given** the application is running
+**When** I click the theme toggle in the header, then restart the app
+**Then** the UI switches between light and dark themes and the choice persists after restart
 
 ---
 
