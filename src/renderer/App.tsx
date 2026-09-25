@@ -35,7 +35,7 @@ function App() {
 
   return (
     <main style={{ padding: '1rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>RG432 Test Rig</h1>
+      <h1>AMF RG432 Test Rig</h1>
 
       <section style={{ marginBottom: '1rem' }}>
         <h2>Board Registration</h2>
