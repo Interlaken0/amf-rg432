@@ -49,8 +49,10 @@ jobs:
 
   release:
     runs-on: windows-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release)')
     needs: ci
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
