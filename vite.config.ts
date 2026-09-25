@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import tailwindcss from '@tailwindcss/vite';
@@ -37,6 +37,7 @@ export default defineConfig({
             minify: false,
             outDir: 'dist/preload',
             lib: {
+              entry: 'src/main/preload.ts',
               formats: ['cjs'],
             },
           },
