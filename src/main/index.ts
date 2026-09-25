@@ -1,3 +1,6 @@
+/**
+ * Main Electron process entry point
+ */
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -9,6 +12,7 @@ import {
   getTests,
 } from './test-repository';
 import { createDllInterop } from '../native/dll-interop';
+import { createSettingsStore } from './settings';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -18,12 +22,19 @@ if (process.env.VITE_DEV_SERVER_URL) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Main window instance
+ */
 let mainWindow: BrowserWindow | null = null;
 
+/**
+ * Create the main application window
+ */
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
+    title: 'AMF RG432 Test Rig',
     webPreferences: {
       preload: join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -60,13 +71,45 @@ app.on('window-all-closed', () => {
   }
 });
 
-const dllInterop = createDllInterop();
+/**
+ * Application settings store persisted to userData
+ */
+const settings = createSettingsStore(
+  join(app.getPath('userData'), 'settings.json'),
+);
 
+/**
+ * DLL interop instance for hardware communication
+ */
+let dllInterop = createDllInterop({ forceMock: settings.get().mockMode });
+
+/**
+ * IPC handler for getting the current mock mode setting
+ */
+ipcMain.handle('get-mock-mode', async (): Promise<boolean> => {
+  return settings.get().mockMode;
+});
+
+/**
+ * IPC handler for toggling mock mode
+ */
+ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolean> => {
+  const updated = settings.setMockMode(enabled);
+  dllInterop = createDllInterop({ forceMock: updated.mockMode });
+  return updated.mockMode;
+});
+
+/**
+ * IPC handler for board registration
+ */
 ipcMain.handle('register-board', async (_event, registration: BoardRegistration): Promise<void> => {
   await dllInterop.registerBoard(registration);
   saveBoard(registration);
 });
 
+/**
+ * IPC handler for running a test
+ */
 ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestResult> => {
   const board = getBoard(serialNumber);
   if (!board) {
@@ -79,6 +122,9 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
   return resultWithOperator;
 });
 
+/**
+ * IPC handler for getting test history
+ */
 ipcMain.handle('get-test-history', async (): Promise<TestResult[]> => {
   return getTests();
 });

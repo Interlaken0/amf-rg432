@@ -5,9 +5,21 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
 
+/**
+ * DLL file name constant
+ */
 const DLL_FILE_NAME = 'RG432Test1.0.dll';
+
+/**
+ * Maximum path length for Windows
+ */
 const MAX_PATH = 260;
 
+/**
+ * Resolve the path to the DLL file
+ * @returns The absolute path to the DLL
+ * @throws Error if the DLL is not found
+ */
 function resolveDllPath(): string {
   const candidates = [
     join(app.getAppPath(), 'dll', DLL_FILE_NAME),
@@ -29,6 +41,10 @@ function resolveDllPath(): string {
   );
 }
 
+/**
+ * Ensure the results directory exists and configure the registry
+ * @returns The results directory path
+ */
 function ensureResultsPath(): string {
   const resultsPath = join(app.getPath('userData'), 'Results');
   mkdirSync(resultsPath, { recursive: true });
@@ -48,16 +64,49 @@ function ensureResultsPath(): string {
   return resultsPath;
 }
 
-function readDatBytes(filePath: string): number[] {
+/**
+ * Read the 4 measurement bytes from a .dat results file
+ *
+ * Per the DLL reference guide, RunTest writes four measurement bytes
+ * followed by the serial number, so the measurements are the first
+ * bytes of the file.
+ * @param filePath The path to the results file
+ * @returns Array of the first 4 bytes
+ * @throws Error if the file cannot be read or is too short
+ */
+function readMeasurementBytes(filePath: string): number[] {
+  let buffer: Buffer;
   try {
-    const buffer = readFileSync(filePath);
-    const start = Math.max(0, buffer.length - 4);
-    return Array.from(buffer.subarray(start));
+    buffer = readFileSync(filePath);
   } catch (error) {
     throw new Error(`Failed to read results file ${filePath}: ${error}`);
   }
+
+  if (buffer.length < 4) {
+    throw new Error(`Results file ${filePath} is too short (${buffer.length} bytes)`);
+  }
+
+  return Array.from(buffer.subarray(0, 4));
 }
 
+/**
+ * Determine pass/fail from the measurement bytes
+ *
+ * Stage 1 semantics: each byte is a simulated measurement in the range 0-6.
+ * A test passes only if all four bytes are within that range. When Jeff's
+ * final DLL documents real result codes this function should be updated to
+ * match.
+ * @param bytes The measurement bytes from the results file
+ * @returns True if the test passed
+ */
+function isPassing(bytes: number[]): boolean {
+  return bytes.every((byte) => byte <= 6);
+}
+
+/**
+ * Create a real DLL interop instance
+ * @returns The real DLL interop instance
+ */
 export function createRealDllInterop(): DllInterop {
   const lib = koffi.load(resolveDllPath());
 
@@ -71,6 +120,11 @@ export function createRealDllInterop(): DllInterop {
     'uint8_t __cdecl GetResult(_Out_ uint16_t *wDetails, _Out_ char *szResultsFile)',
   );
 
+  /**
+   * Call the InitialiseDevice DLL function
+   * @param serialNumber The board serial number
+   * @throws Error if the DLL call fails
+   */
   function callInitialiseDevice(serialNumber: string): void {
     const errorCode = [0];
     const result = initialiseDevice(serialNumber, errorCode);
@@ -82,6 +136,11 @@ export function createRealDllInterop(): DllInterop {
     }
   }
 
+  /**
+   * Call the RunTest DLL function
+   * @param testType The test type (0 for standard test)
+   * @throws Error if the DLL call fails
+   */
   function callRunTest(testType: number): void {
     const errorCode = [0];
     const result = runTestFn(testType, errorCode);
@@ -93,6 +152,11 @@ export function createRealDllInterop(): DllInterop {
     }
   }
 
+  /**
+   * Call the GetResult DLL function
+   * @returns Object containing details and results file path
+   * @throws Error if the DLL call fails
+   */
   function callGetResult(): { details: number; resultsFile: string } {
     const wDetails = [0];
     const resultsBuffer = Buffer.alloc(MAX_PATH);
@@ -118,15 +182,16 @@ export function createRealDllInterop(): DllInterop {
     runTest: async (serialNumber: string): Promise<TestResult> => {
       callRunTest(0);
       const { details, resultsFile } = callGetResult();
-      const bytes = readDatBytes(resultsFile);
+      const bytes = readMeasurementBytes(resultsFile);
+      const passed = isPassing(bytes);
 
       return {
         id: 0,
         serialNumber,
         operator: '',
         timestamp: new Date().toISOString(),
-        status: 'pass',
-        diagnostics: `Details=0x${details.toString(16)}, raw bytes=[${bytes.join(',')}], file=${resultsFile}`,
+        status: passed ? 'pass' : 'fail',
+        diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${bytes.join(',')}], file=${resultsFile}`,
       };
     },
 

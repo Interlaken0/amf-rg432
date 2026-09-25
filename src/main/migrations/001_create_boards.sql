@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS boards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  serial_number TEXT NOT NULL UNIQUE,
+  operator TEXT NOT NULL,
+  registered_at TEXT NOT NULL
+);
