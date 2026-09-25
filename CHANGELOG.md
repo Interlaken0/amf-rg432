@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [Sprint 1]
+## 0.0.1 (2026-07-17) - Sprint 1
 
 ### Features
 - Initial Electron scaffold with tooling, CI/CD, and mock DLL
