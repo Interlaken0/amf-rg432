@@ -1,7 +1,16 @@
+/**
+ * Mock DLL module tests
+ */
 import { describe, it, expect } from 'vitest';
 import { registerBoard, runTest, getTestHistory } from '../src/native/mock-dll';
 
+/**
+ * Test suite for mock DLL functions
+ */
 describe('mock DLL', () => {
+  /**
+   * Test that registerBoard registers a board and runTest returns it in history
+   */
   it('registers a board and returns it in history after a test', async () => {
     const registration = {
       serialNumber: 'RG432-001',
@@ -20,6 +29,9 @@ describe('mock DLL', () => {
     expect(history.length).toBeGreaterThan(0);
   });
 
+  /**
+   * Test that runTest throws when running a test for an unregistered board
+   */
   it('throws when running a test for an unregistered board', async () => {
     await expect(runTest('UNKNOWN-001')).rejects.toThrow('has not been registered');
   });

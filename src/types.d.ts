@@ -1,5 +1,11 @@
+/**
+ * Global type declarations for the Electron API
+ */
 import type { BoardRegistration, TestResult } from './shared/types';
 
+/**
+ * Extend the Window interface to include the Electron API
+ */
 declare global {
   interface Window {
     electronAPI: {

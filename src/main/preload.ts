@@ -1,6 +1,12 @@
+/**
+ * Preload script for exposing IPC API to renderer process
+ */
 import { contextBridge, ipcRenderer } from 'electron';
 import type { BoardRegistration } from '../shared/types';
 
+/**
+ * Expose the Electron API to the renderer process via contextBridge
+ */
 contextBridge.exposeInMainWorld('electronAPI', {
   registerBoard: (registration: BoardRegistration) =>
     ipcRenderer.invoke('register-board', registration),

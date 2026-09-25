@@ -1,9 +1,15 @@
+/**
+ * Test repository module tests
+ */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../src/main/migrations';
 import { setDatabase } from '../src/main/database';
 import { saveBoard, getBoard, saveTest, getTests } from '../src/main/test-repository';
 
+/**
+ * Test suite for test repository functions
+ */
 describe('test repository', () => {
   let db: Database.Database;
 
@@ -18,6 +24,9 @@ describe('test repository', () => {
     db.close();
   });
 
+  /**
+   * Test that saveBoard saves a board and getBoard retrieves it by serial number
+   */
   it('saves a board and retrieves it by serial number', () => {
     const registration = {
       serialNumber: 'RG432-001',
@@ -32,6 +41,9 @@ describe('test repository', () => {
     expect(board).toEqual(registration);
   });
 
+  /**
+   * Test that saveBoard updates an existing board when registered again
+   */
   it('updates an existing board when registered again', () => {
     const first = {
       serialNumber: 'RG432-002',
@@ -51,6 +63,9 @@ describe('test repository', () => {
     expect(board).toEqual(second);
   });
 
+  /**
+   * Test that saveTest saves a test result and getTests returns it in history
+   */
   it('saves a test result and returns it in history', () => {
     const registration = {
       serialNumber: 'RG432-003',
@@ -80,6 +95,9 @@ describe('test repository', () => {
     });
   });
 
+  /**
+   * Test that saveTest throws when saving a test for an unregistered board
+   */
   it('throws when saving a test for an unregistered board', () => {
     const result = {
       id: 0,
