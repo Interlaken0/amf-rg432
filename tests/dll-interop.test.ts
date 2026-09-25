@@ -16,7 +16,6 @@ describe('dll-interop', () => {
     expect(interop).toBeDefined();
     expect(typeof interop.registerBoard).toBe('function');
     expect(typeof interop.runTest).toBe('function');
-    expect(typeof interop.getTestHistory).toBe('function');
   });
 
   /**
@@ -26,7 +25,6 @@ describe('dll-interop', () => {
     const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     expect(interop).toHaveProperty('registerBoard');
     expect(interop).toHaveProperty('runTest');
-    expect(interop).toHaveProperty('getTestHistory');
   });
 
   /**

@@ -5,7 +5,6 @@ import { describe, it, expect } from 'vitest';
 import {
   registerBoard,
   runTest,
-  getTestHistory,
   createMockDllInterop,
 } from '../src/native/mock-dll';
 
@@ -14,9 +13,9 @@ import {
  */
 describe('mock DLL', () => {
   /**
-   * Test that registerBoard registers a board and runTest returns it in history
+   * Test that registerBoard registers a board and runTest returns a result
    */
-  it('registers a board and returns it in history after a test', async () => {
+  it('registers a board and returns a test result', async () => {
     const registration = {
       serialNumber: 'RG432-001',
       operator: 'Greg',
@@ -29,9 +28,6 @@ describe('mock DLL', () => {
     expect(result.serialNumber).toBe('RG432-001');
     expect(result.operator).toBe('Greg');
     expect(['pass', 'fail']).toContain(result.status);
-
-    const history = await getTestHistory();
-    expect(history.length).toBeGreaterThan(0);
   });
 
   /**

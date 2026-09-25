@@ -77,35 +77,6 @@ export function saveTest(result: TestResult): number {
 }
 
 /**
- * Per-operator test statistics for batch reporting
- */
-export interface OperatorStats {
-  operator: string;
-  total: number;
-  passed: number;
-  failed: number;
-}
-
-/**
- * Get aggregate test statistics grouped by operator
- * @returns Array of per-operator test counts
- */
-export function getTestStatsByOperator(): OperatorStats[] {
-  const db = getDatabase();
-  const statement = db.prepare(`
-    SELECT
-      operator,
-      COUNT(*) AS total,
-      SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) AS passed,
-      SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) AS failed
-    FROM tests
-    GROUP BY operator
-    ORDER BY total DESC
-  `);
-  return statement.all() as OperatorStats[];
-}
-
-/**
  * Get all test results from the database
  * @returns Array of all test results
  */

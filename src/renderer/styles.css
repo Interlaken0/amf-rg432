@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/* Class-based dark mode - toggled on <html> by the theme switch */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}

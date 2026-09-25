@@ -25,5 +25,4 @@ export interface TestResult {
 export interface DllInterop {
   registerBoard: (registration: BoardRegistration) => Promise<void>;
   runTest: (serialNumber: string) => Promise<TestResult>;
-  getTestHistory: () => Promise<TestResult[]>;
 }

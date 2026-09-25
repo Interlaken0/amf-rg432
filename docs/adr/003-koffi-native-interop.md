@@ -43,5 +43,5 @@ Koffi is actively maintained and built for modern Node.js. It handles both synch
 
 - Isolating DLL calls behind a mockable interface
 - Using the mock DLL for development and CI on non-Windows platforms
-- Adding comprehensive error handling and logging
+- Adding proper error handling and logging
 - Documenting the DLL interface clearly in the headers

@@ -22,11 +22,6 @@ export interface MockDllOptions {
 const registeredBoards: Map<string, BoardRegistration> = new Map();
 
 /**
- * In-memory storage for mock test results
- */
-const testResults: TestResult[] = [];
-
-/**
  * Counter for generating mock test result IDs
  */
 let resultId = 1;
@@ -75,16 +70,7 @@ export async function runTest(serialNumber: string): Promise<TestResult> {
     diagnostics: isPass ? undefined : 'Mock failure: simulated DLL returned error flag 0x01',
   };
 
-  testResults.push(result);
   return result;
-}
-
-/**
- * Get the mock test history
- * @returns Array of all mock test results
- */
-export async function getTestHistory(): Promise<TestResult[]> {
-  return [...testResults];
 }
 
 /**
@@ -130,7 +116,5 @@ export function createMockDllInterop(options?: MockDllOptions): DllInterop {
 
       return runTest(serialNumber);
     },
-
-    getTestHistory,
   };
 }

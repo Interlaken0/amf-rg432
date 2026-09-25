@@ -22,8 +22,18 @@ describe('summariseTests', () => {
 
   it('groups statistics by operator', () => {
     const summary = summariseTests(sampleTests);
-    expect(summary.byOperator['Dave']).toEqual({ total: 2, passed: 1, failed: 1 });
-    expect(summary.byOperator['Sarah']).toEqual({ total: 1, passed: 1, failed: 0 });
+    expect(summary.byOperator['dave']).toEqual({ name: 'Dave', total: 2, passed: 1, failed: 1 });
+    expect(summary.byOperator['sarah']).toEqual({ name: 'Sarah', total: 1, passed: 1, failed: 0 });
+  });
+
+  it('merges operator names that differ only by case', () => {
+    const tests: TestResult[] = [
+      { id: 1, serialNumber: 'A', operator: 'Greg', timestamp: 't', status: 'pass' },
+      { id: 2, serialNumber: 'B', operator: 'greg', timestamp: 't', status: 'fail' },
+    ];
+    const summary = summariseTests(tests);
+    expect(Object.keys(summary.byOperator)).toHaveLength(1);
+    expect(summary.byOperator['greg']).toEqual({ name: 'Greg', total: 2, passed: 1, failed: 1 });
   });
 
   it('handles an empty result set', () => {
@@ -50,5 +60,14 @@ describe('buildBatchReportCsv', () => {
     );
     expect(csv).toContain('"Last, First"');
     expect(csv).toContain('"said ""no"""');
+  });
+
+  it('wraps all-digit serials so Excel keeps them as text', () => {
+    const csv = buildBatchReportCsv(
+      [{ id: 9, serialNumber: '1111111111111', operator: 'Sarah', timestamp: 't', status: 'pass' }],
+      new Date(),
+    );
+    expect(csv).toContain('="1111111111111"');
+    expect(csv).not.toContain(',1111111111111,');
   });
 });

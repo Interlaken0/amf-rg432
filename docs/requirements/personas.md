@@ -36,7 +36,7 @@ Dave is a factory operator on the RG432 production line. He has worked in electr
 
 - Dave wants to do his job well and avoid shipping a faulty unit
 - He takes pride in spotting patterns, such as a batch of boards failing the same test
-- He prefers tools that feel robust and do not slow him down
+- He prefers tools that feel solid and do not slow him down
 
 ## Goals
 

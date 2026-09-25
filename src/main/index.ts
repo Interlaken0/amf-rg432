@@ -16,6 +16,7 @@ import { createDllInterop } from '../native/dll-interop';
 import { createSettingsStore } from './settings';
 import { createDiagnosticLogger } from './diagnostics';
 import { buildBatchReportCsv } from './report';
+import { isValidSerial } from '../shared/validation';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -111,6 +112,10 @@ ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolea
  * IPC handler for board registration
  */
 ipcMain.handle('register-board', async (_event, registration: BoardRegistration): Promise<void> => {
+  if (!isValidSerial(registration.serialNumber)) {
+    throw new Error('Invalid serial number format. Use letters, numbers and dashes, e.g. RG432-001.');
+  }
+
   try {
     await dllInterop.registerBoard(registration);
     saveBoard(registration);
@@ -118,6 +123,13 @@ ipcMain.handle('register-board', async (_event, registration: BoardRegistration)
     const logPath = diagnostics.write(`register-board serial=${registration.serialNumber}`, error);
     throw new Error(`Registration failed: ${error instanceof Error ? error.message : String(error)}. Diagnostic log: ${logPath}`);
   }
+});
+
+/**
+ * IPC handler for checking whether a board serial is already registered
+ */
+ipcMain.handle('board-exists', async (_event, serialNumber: string): Promise<boolean> => {
+  return Boolean(getBoard(String(serialNumber).trim()));
 });
 
 /**
