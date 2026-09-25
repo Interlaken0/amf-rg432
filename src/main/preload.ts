@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTestHistory: () => ipcRenderer.invoke('get-test-history'),
   getMockMode: () => ipcRenderer.invoke('get-mock-mode'),
   setMockMode: (enabled: boolean) => ipcRenderer.invoke('set-mock-mode', enabled),
+  exportBatchReport: () => ipcRenderer.invoke('export-batch-report'),
 });

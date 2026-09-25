@@ -14,6 +14,7 @@ declare global {
       getTestHistory: () => Promise<TestResult[]>;
       getMockMode: () => Promise<boolean>;
       setMockMode: (enabled: boolean) => Promise<boolean>;
+      exportBatchReport: () => Promise<string | null>;
     };
   }
 }
