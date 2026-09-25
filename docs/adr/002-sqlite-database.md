@@ -10,11 +10,35 @@ The test rig needs to store a few things permanently - board registrations with 
 
 I had a few options to consider:
 
-- **SQLite with better-sqlite3** - embedded database with a synchronous API
+- **SQLite with better-sqlite3** - embedded relational database with a synchronous API
 - **SQLite with sql.js** - in-memory or WASM-based, not great for long-term storage
 - **JSON files** - simple but can't really query them properly and no integrity guarantees
 - **IndexedDB** - browser-only, doesn't work in the Electron main process
 - **PostgreSQL/MySQL** - needs an external server, overkill for a single PC
+
+## Relational vs non-relational
+
+The choice here is really between a relational database and a non-relational store, and it's worth spelling out why relational wins for this project.
+
+Our data is inherently relational. A board has many tests, and every test record needs to trace back to a registered board and an operator. That maps naturally onto tables with foreign keys - the `tests` table references `boards`, and the schema enforces that you can't record a test against a serial number that was never registered. A non-relational store like JSON files or a document database can't enforce that integrity; the relationship would only exist as a convention in the code, and nothing would stop a bad write from corrupting it.
+
+Relational also gives us declarative querying through SQL. The batch reports and test history need joins and aggregations - "all tests for this board", "pass rate per operator this week". In a document store I'd be loading everything into memory and filtering in JavaScript, which is both slower and more error-prone. Migrations are another point: the schema evolves through versioned SQL migration files, so every database upgrade is explicit and auditable.
+
+The trade-off is that a relational schema is rigid - changing the structure means writing a migration rather than just saving a different-shaped object. For a test rig where the record format is stable and traceability matters, that rigidity is a feature, not a bug. Non-relational stores shine when the data shape varies per record or when you need horizontal scaling across servers; neither applies to a single-operator Windows desktop app.
+
+## Data protection
+
+The database stores personal data - operator names are recorded against board registrations and test results - so GDPR applies even though this is an internal tool.
+
+The approach I'm taking:
+
+- **Data minimisation** - we only store the operator identifier needed for traceability, nothing else personal
+- **Storage limitation** - the database lives in the OS-standard `userData` directory on the local machine only; it is never transmitted off the PC
+- **Integrity** - all queries use parameterised placeholders, which prevents SQL injection and accidental corruption (see the Security Checklist)
+- **Retention** - test records need to be kept for production traceability, but the batch report export gives us a route to archive or purge old records when a retention policy is agreed with Jeff
+- **Access control** - the Electron main process is the only path to the database file; the renderer reaches it through the allowlisted IPC bridge, so there's no direct filesystem access from UI code
+
+If the tool is ever deployed to a shared factory PC, we should revisit this - operator logins and OS-level file permissions would become relevant.
 
 ## Decision
 
