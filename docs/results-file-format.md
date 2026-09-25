@@ -46,8 +46,8 @@ A real file for serial `54321` is exactly 260 bytes:
 
 There is no length prefix, checksum, or footer. `parseResultsFile()`
 extracts the serial from the bytes before the first NUL and reads the
-measurements from the trailing four bytes, so it is robust to the serial
-field size changing.
+measurements from the trailing four bytes, so it still works if the
+serial field size changes.
 
 ## 3. Processing pipeline
 

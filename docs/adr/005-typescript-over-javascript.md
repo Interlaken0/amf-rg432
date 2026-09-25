@@ -12,7 +12,7 @@ I had a few options to consider:
 
 - **TypeScript** - JavaScript with static typing and compile-time checking
 - **JavaScript** - Dynamic typing, no compile-time checks
-- **JavaScript with JSDoc** - Adds type annotations but less comprehensive than TypeScript
+- **JavaScript with JSDoc** - Adds type annotations but the coverage is weaker than TypeScript
 - **Flow** - Alternative type system for JavaScript, less popular now
 
 ## Decision

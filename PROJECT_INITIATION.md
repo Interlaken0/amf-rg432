@@ -18,7 +18,7 @@
 
 The RG432 Automated Test Rig is a Windows desktop application that will program, verify, and log every RG432 audio conversion board before it leaves the factory. The application will provide a simple operator interface, coordinate with product-specific DLLs via a native FFI layer, and store all test results in a local SQLite database. The primary goal is to eliminate expensive customer returns by ensuring each unit is fully tested and traceable.
 
-This project is being undertaken as part of a Level 4 Software Developer apprenticeship. It covers the full Software Development Life-Cycle (SDLC), including user interface design, native library integration, database management, and robust system testing.
+This project is being undertaken as part of a Level 4 Software Developer apprenticeship. It covers the full Software Development Life-Cycle (SDLC), including user interface design, native library integration, database management, and thorough system testing.
 
 ---
 
@@ -111,7 +111,7 @@ Jeff has approved the following recommendation. It is not part of the test rig b
 
 | Layer | Technology | Justification |
 |-------|------------|---------------|
-| Desktop framework | Electron + React + Vite + TypeScript | Type-safe, modern desktop GUI with fast Vite builds and robust tooling. |
+| Desktop framework | Electron + React + Vite + TypeScript | Type-safe, modern desktop GUI with fast Vite builds and proven tooling. |
 | Native interoperability | Koffi (Node.js C FFI) | Modern, fast, and memory-safe FFI for loading and invoking C-based DLLs from Node.js. |
 | Local database | SQLite via better-sqlite3 | Serverless, lightweight, and ideal for a standalone factory test rig; better-sqlite3 provides a synchronous, high-performance Node.js binding. |
 | Language | TypeScript | Static typing across the Electron main process, renderer, and shared modules. |
@@ -217,7 +217,7 @@ The application will handle manufacturing data, including board serial numbers a
 
 ## 11. Supporting Practices
 
-The following practices will be adopted alongside the core build to keep the project robust and assessable:
+The following practices will be adopted alongside the core build to keep the project solid and easy to assess:
 
 - **Architecture Decision Records (ADRs)** — Short, numbered markdown records in `docs/adr/` for every major technology or design choice.
 - **Lightweight CI/CD** — GitHub Actions workflow for lint, typecheck, test, and Windows build on every push.
