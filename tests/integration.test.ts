@@ -26,7 +26,7 @@ describe('sqlite and mock dll integration', () => {
   });
 
   it('persists a board registered through the interop layer', async () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     const registration = {
       serialNumber: 'RG432-1001',
       operator: 'Dave',
@@ -42,7 +42,7 @@ describe('sqlite and mock dll integration', () => {
   });
 
   it('persists a mock test result against a registered board', async () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     const registration = {
       serialNumber: 'RG432-1002',
       operator: 'Sarah',
@@ -63,7 +63,7 @@ describe('sqlite and mock dll integration', () => {
   });
 
   it('rejects a test result for an unregistered board', async () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     await expect(interop.runTest('RG432-9999')).rejects.toThrow('has not been registered');
 
     expect(() =>

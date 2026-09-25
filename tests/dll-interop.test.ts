@@ -12,7 +12,7 @@ describe('dll-interop', () => {
    * Test that createMockDllInterop returns an object with the expected interface
    */
   it('returns an object with the expected interface', () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     expect(interop).toBeDefined();
     expect(typeof interop.registerBoard).toBe('function');
     expect(typeof interop.runTest).toBe('function');
@@ -23,7 +23,7 @@ describe('dll-interop', () => {
    * Test that the interop object has the required properties
    */
   it('returns an object with the required properties', () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     expect(interop).toHaveProperty('registerBoard');
     expect(interop).toHaveProperty('runTest');
     expect(interop).toHaveProperty('getTestHistory');
@@ -33,7 +33,7 @@ describe('dll-interop', () => {
    * Test that the interop functions are callable and work correctly
    */
   it('interop functions are callable', async () => {
-    const interop = createMockDllInterop();
+    const interop = createMockDllInterop({ simulateTiming: false, disconnectRate: 0 });
     const registration = {
       serialNumber: 'TEST-001',
       operator: 'Test Operator',
