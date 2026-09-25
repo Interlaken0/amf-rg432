@@ -16,6 +16,7 @@
     "rebuild:node": "npx @electron/rebuild -w better-sqlite3 koffi --build-from-source --force",
     "copy-migrations": "xcopy \"src\\main\\migrations\" \"dist\\main\\migrations\" /E /I /Y",
     "test": "npm rebuild better-sqlite3 koffi && vitest run",
+    "seed": "vite-node scripts/seed.ts",
     "test:watch": "vitest",
     "test:changed": "npm rebuild better-sqlite3 koffi && vitest run --changed",
     "prepare": "husky",
