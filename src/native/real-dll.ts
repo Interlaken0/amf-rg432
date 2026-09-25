@@ -1,5 +1,4 @@
 import koffi from 'koffi';
-import { app } from 'electron';
 import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -16,19 +15,61 @@ const DLL_FILE_NAME = 'RG432Test1.0.dll';
 const MAX_PATH = 260;
 
 /**
+ * Resolve the app path, falling back to the working directory when
+ * Electron is not available (e.g. running under vitest)
+ */
+async function appPath(): Promise<string> {
+  try {
+    const electron = (await import('electron')) as {
+      app?: { getAppPath?: () => string };
+    };
+    return electron.app?.getAppPath?.() ?? process.cwd();
+  } catch {
+    return process.cwd();
+  }
+}
+
+/**
+ * Resolve the Electron userData path, falling back to a local
+ * directory or the RG432_USERDATA environment variable when
+ * Electron is not available
+ */
+async function userDataPath(): Promise<string> {
+  const fallback = process.env.RG432_USERDATA ?? join(process.cwd(), 'userdata');
+  try {
+    const electron = (await import('electron')) as {
+      app?: { getPath?: (name: string) => string };
+    };
+    return electron.app?.getPath?.('userData') ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Resolve the path to the DLL file
  * @returns The absolute path to the DLL
  * @throws Error if the DLL is not found
  */
-function resolveDllPath(): string {
+async function resolveDllPath(): Promise<string> {
+  // An explicit override is authoritative: fail if it points nowhere
+  if (process.env.RG432_DLL_PATH) {
+    if (existsSync(process.env.RG432_DLL_PATH)) {
+      return process.env.RG432_DLL_PATH;
+    }
+    throw new Error(`RG432_DLL_PATH does not exist: ${process.env.RG432_DLL_PATH}`);
+  }
+
+  const base = await appPath();
   const candidates = [
-    join(app.getAppPath(), 'dll', DLL_FILE_NAME),
+    join(base, 'dll', DLL_FILE_NAME),
+    join(process.cwd(), 'dll', DLL_FILE_NAME),
     join(
       (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '',
       'dll',
       DLL_FILE_NAME,
     ),
-  ];
+  ].filter((candidate): candidate is string => Boolean(candidate));
 
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
@@ -45,8 +86,8 @@ function resolveDllPath(): string {
  * Ensure the results directory exists and configure the registry
  * @returns The results directory path
  */
-function ensureResultsPath(): string {
-  const resultsPath = join(app.getPath('userData'), 'Results');
+async function ensureResultsPath(): Promise<string> {
+  const resultsPath = join(await userDataPath(), 'Results');
   mkdirSync(resultsPath, { recursive: true });
 
   const key = 'HKCU\\SOFTWARE\\LittleStone\\432\\TestSettings';
@@ -104,28 +145,61 @@ function isPassing(bytes: number[]): boolean {
 }
 
 /**
+ * Loaded DLL function bindings
+ */
+interface DllFunctions {
+  initialiseDevice: (serialNumber: string, errorCode: number[]) => number;
+  runTestFn: (testType: number, errorCode: number[]) => number;
+  getResult: (wDetails: number[], resultsBuffer: Buffer) => number;
+}
+
+/**
  * Create a real DLL interop instance
  * @returns The real DLL interop instance
  */
 export function createRealDllInterop(): DllInterop {
-  const lib = koffi.load(resolveDllPath());
+  /**
+   * Lazily loaded DLL bindings - loaded on first call so the module
+   * can be imported in environments without the DLL present
+   */
+  let libPromise: Promise<DllFunctions> | null = null;
 
-  const initialiseDevice = lib.func(
-    'uint8_t __cdecl InitialiseDevice(const char *szSerial, _Out_ uint8_t *byErrorCode)',
-  );
-  const runTestFn = lib.func(
-    'uint8_t __cdecl RunTest(uint8_t byType, _Out_ uint8_t *byErrorCode)',
-  );
-  const getResult = lib.func(
-    'uint8_t __cdecl GetResult(_Out_ uint16_t *wDetails, _Out_ char *szResultsFile)',
-  );
+  /**
+   * Load the DLL and bind the exported functions
+   * @returns The bound DLL functions
+   */
+  async function loadLib(): Promise<DllFunctions> {
+    const lib = koffi.load(await resolveDllPath());
+
+    return {
+      initialiseDevice: lib.func(
+        'uint8_t __cdecl InitialiseDevice(const char *szSerial, _Out_ uint8_t *byErrorCode)',
+      ),
+      runTestFn: lib.func(
+        'uint8_t __cdecl RunTest(uint8_t byType, _Out_ uint8_t *byErrorCode)',
+      ),
+      getResult: lib.func(
+        'uint8_t __cdecl GetResult(_Out_ uint16_t *wDetails, _Out_ char *szResultsFile)',
+      ),
+    };
+  }
+
+  /**
+   * Get the loaded DLL functions, loading them on first use
+   * @returns The bound DLL functions
+   */
+  function getLib(): Promise<DllFunctions> {
+    libPromise ??= loadLib();
+    return libPromise;
+  }
 
   /**
    * Call the InitialiseDevice DLL function
    * @param serialNumber The board serial number
    * @throws Error if the DLL call fails
    */
-  function callInitialiseDevice(serialNumber: string): void {
+  async function callInitialiseDevice(serialNumber: string): Promise<void> {
+    const { initialiseDevice } = await getLib();
     const errorCode = [0];
     const result = initialiseDevice(serialNumber, errorCode);
 
@@ -141,7 +215,8 @@ export function createRealDllInterop(): DllInterop {
    * @param testType The test type (0 for standard test)
    * @throws Error if the DLL call fails
    */
-  function callRunTest(testType: number): void {
+  async function callRunTest(testType: number): Promise<void> {
+    const { runTestFn } = await getLib();
     const errorCode = [0];
     const result = runTestFn(testType, errorCode);
 
@@ -157,7 +232,8 @@ export function createRealDllInterop(): DllInterop {
    * @returns Object containing details and results file path
    * @throws Error if the DLL call fails
    */
-  function callGetResult(): { details: number; resultsFile: string } {
+  async function callGetResult(): Promise<{ details: number; resultsFile: string }> {
+    const { getResult } = await getLib();
     const wDetails = [0];
     const resultsBuffer = Buffer.alloc(MAX_PATH);
     const result = getResult(wDetails, resultsBuffer);
@@ -175,13 +251,13 @@ export function createRealDllInterop(): DllInterop {
 
   return {
     registerBoard: async (registration: BoardRegistration): Promise<void> => {
-      ensureResultsPath();
-      callInitialiseDevice(registration.serialNumber);
+      await ensureResultsPath();
+      await callInitialiseDevice(registration.serialNumber);
     },
 
     runTest: async (serialNumber: string): Promise<TestResult> => {
-      callRunTest(0);
-      const { details, resultsFile } = callGetResult();
+      await callRunTest(0);
+      const { details, resultsFile } = await callGetResult();
       const bytes = readMeasurementBytes(resultsFile);
       const passed = isPassing(bytes);
 
