@@ -25,17 +25,29 @@ the last `RunTest` wrote, so the app never has to guess the filename.
 
 ## 2. Binary layout
 
-Per the stage-1 reference guide, the file is a flat binary record with no
-header:
+Verified empirically against real stage-1 output (the readme's ordering
+description is misleading): the serial number comes **first** as a
+null-padded ASCII field, and the measurement bytes are the **last** four
+bytes of the file.
 
 ```
-Offset  Size    Content
-0       4 bytes Four measurement bytes, each a random value 0–6
-4       N bytes Serial number (ASCII, as passed to InitialiseDevice)
+Offset          Size        Content
+0               256 bytes   Serial number, ASCII, null-padded
+                            (e.g. "54321" followed by NUL bytes)
+len − 4         4 bytes     Four measurement bytes, each 0–6
 ```
 
-There is no length prefix, checksum, or footer — the measurement block is
-exactly the first four bytes and everything after is the serial string.
+A real file for serial `54321` is exactly 260 bytes:
+
+```
+35 34 33 32 31 00 00 ... 00 | 06 03 06 06
+└─ serial "54321" + NUL padding (256 bytes) ─┘ └ measurements ┘
+```
+
+There is no length prefix, checksum, or footer. `parseResultsFile()`
+extracts the serial from the bytes before the first NUL and reads the
+measurements from the trailing four bytes, so it is robust to the serial
+field size changing.
 
 ## 3. Processing pipeline
 
@@ -44,8 +56,10 @@ RunTest ──writes──> <Results>/<file>.dat
    │
 GetResult ──returns──> wDetails (uint16) + szResultsFile path
    │
-readMeasurementBytes() ──reads──> first 4 bytes → [b0, b1, b2, b3]
+parseResultsFile() ──reads──> serial (NUL-trimmed prefix)
+                            + last 4 bytes → [b0, b1, b2, b3]
    │
+serial check ──throws if file serial ≠ registered serial──>
 isPassing() ──derives──> status: 'pass' | 'fail'
    │
 diagnostics string ──stored──> tests.diagnostics column (SQLite)
@@ -64,8 +78,11 @@ documents its real semantics.
 
 - Non-zero return or error codes from any DLL call throw immediately — the
   file is never read on a failed call.
-- A missing/unreadable/short (<4 byte) `.dat` file throws with the path in
-  the message, so the diagnostic log shows which file failed.
+- A missing/unreadable/short `.dat` file throws with the path in the
+  message, so the diagnostic log shows which file failed.
+- A `.dat` whose embedded serial doesn't match the board under test throws
+  a mismatch error — guards against reading a stale file from a previous
+  test run.
 - All failures surface through the IPC layer to the operator UI and are
   written to `userData/logs/` by the diagnostics logger.
 
@@ -93,8 +110,10 @@ Two things may change and both are contained:
 1. **`wDetails` semantics** — if the final DLL encodes pass/fail in the
    details word, update `isPassing()` (and possibly drop the byte check).
 2. **File layout** — if the final format differs, only
-   `readMeasurementBytes()` and this document change; the pipeline and the
-   SQLite linkage stay as they are.
+   `parseResultsFile()` and this document change; the pipeline and the
+   SQLite linkage stay as they are. The layout documented above was
+   verified against real stage-1 output, not just the readme — the readme
+   alone was misleading once already.
 
 The DLL location can also be overridden without a rebuild via the
 `RG432_DLL_PATH` environment variable.

@@ -106,16 +106,25 @@ async function ensureResultsPath(): Promise<string> {
 }
 
 /**
- * Read the 4 measurement bytes from a .dat results file
+ * Parsed contents of a .dat results file
+ */
+interface ResultsFile {
+  serial: string;
+  measurements: number[];
+}
+
+/**
+ * Parse a .dat results file written by RunTest
  *
- * Per the DLL reference guide, RunTest writes four measurement bytes
- * followed by the serial number, so the measurements are the first
- * bytes of the file.
+ * Empirically verified layout (stage-1 DLL): the serial number comes
+ * FIRST as a null-padded ASCII field, and the four measurement bytes
+ * are the LAST four bytes of the file. The readme's ordering
+ * description is misleading - verified against real output.
  * @param filePath The path to the results file
- * @returns Array of the first 4 bytes
+ * @returns The parsed serial number and measurement bytes
  * @throws Error if the file cannot be read or is too short
  */
-function readMeasurementBytes(filePath: string): number[] {
+function parseResultsFile(filePath: string): ResultsFile {
   let buffer: Buffer;
   try {
     buffer = readFileSync(filePath);
@@ -123,11 +132,16 @@ function readMeasurementBytes(filePath: string): number[] {
     throw new Error(`Failed to read results file ${filePath}: ${error}`);
   }
 
-  if (buffer.length < 4) {
+  if (buffer.length < 5) {
     throw new Error(`Results file ${filePath} is too short (${buffer.length} bytes)`);
   }
 
-  return Array.from(buffer.subarray(0, 4));
+  const nullIndex = buffer.indexOf(0);
+  const serialEnd = nullIndex === -1 ? buffer.length - 4 : nullIndex;
+  const serial = buffer.subarray(0, serialEnd).toString('latin1');
+  const measurements = Array.from(buffer.subarray(buffer.length - 4));
+
+  return { serial, measurements };
 }
 
 /**
@@ -258,8 +272,15 @@ export function createRealDllInterop(): DllInterop {
     runTest: async (serialNumber: string): Promise<TestResult> => {
       await callRunTest(0);
       const { details, resultsFile } = await callGetResult();
-      const bytes = readMeasurementBytes(resultsFile);
-      const passed = isPassing(bytes);
+      const { serial, measurements } = parseResultsFile(resultsFile);
+
+      if (serial !== serialNumber) {
+        throw new Error(
+          `Results file serial mismatch: expected ${serialNumber}, file contains ${serial}`,
+        );
+      }
+
+      const passed = isPassing(measurements);
 
       return {
         id: 0,
@@ -267,7 +288,7 @@ export function createRealDllInterop(): DllInterop {
         operator: '',
         timestamp: new Date().toISOString(),
         status: passed ? 'pass' : 'fail',
-        diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${bytes.join(',')}], file=${resultsFile}`,
+        diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${measurements.join(',')}], file=${resultsFile}`,
       };
     },
 
