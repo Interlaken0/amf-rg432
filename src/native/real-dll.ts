@@ -65,19 +65,42 @@ function ensureResultsPath(): string {
 }
 
 /**
- * Read the last 4 bytes from a .dat results file
+ * Read the 4 measurement bytes from a .dat results file
+ *
+ * Per the DLL reference guide, RunTest writes four measurement bytes
+ * followed by the serial number, so the measurements are the first
+ * bytes of the file.
  * @param filePath The path to the results file
- * @returns Array of the last 4 bytes
- * @throws Error if the file cannot be read
+ * @returns Array of the first 4 bytes
+ * @throws Error if the file cannot be read or is too short
  */
-function readDatBytes(filePath: string): number[] {
+function readMeasurementBytes(filePath: string): number[] {
+  let buffer: Buffer;
   try {
-    const buffer = readFileSync(filePath);
-    const start = Math.max(0, buffer.length - 4);
-    return Array.from(buffer.subarray(start));
+    buffer = readFileSync(filePath);
   } catch (error) {
     throw new Error(`Failed to read results file ${filePath}: ${error}`);
   }
+
+  if (buffer.length < 4) {
+    throw new Error(`Results file ${filePath} is too short (${buffer.length} bytes)`);
+  }
+
+  return Array.from(buffer.subarray(0, 4));
+}
+
+/**
+ * Determine pass/fail from the measurement bytes
+ *
+ * Stage 1 semantics: each byte is a simulated measurement in the range 0-6.
+ * A test passes only if all four bytes are within that range. When Jeff's
+ * final DLL documents real result codes this function should be updated to
+ * match.
+ * @param bytes The measurement bytes from the results file
+ * @returns True if the test passed
+ */
+function isPassing(bytes: number[]): boolean {
+  return bytes.every((byte) => byte <= 6);
 }
 
 /**
@@ -159,15 +182,16 @@ export function createRealDllInterop(): DllInterop {
     runTest: async (serialNumber: string): Promise<TestResult> => {
       callRunTest(0);
       const { details, resultsFile } = callGetResult();
-      const bytes = readDatBytes(resultsFile);
+      const bytes = readMeasurementBytes(resultsFile);
+      const passed = isPassing(bytes);
 
       return {
         id: 0,
         serialNumber,
         operator: '',
         timestamp: new Date().toISOString(),
-        status: 'pass',
-        diagnostics: `Details=0x${details.toString(16)}, raw bytes=[${bytes.join(',')}], file=${resultsFile}`,
+        status: passed ? 'pass' : 'fail',
+        diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${bytes.join(',')}], file=${resultsFile}`,
       };
     },
 
