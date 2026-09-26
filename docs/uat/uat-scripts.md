@@ -69,7 +69,7 @@
 **Covers:** Use Case 4 (history)
 **Given** several tests have been run
 **When** I restart the application
-**Then** the Test History table still shows the previous results with serial, status and operator
+**Then** the Test History table still shows the previous results with serial, status and operator — the five most recent by default, with a "View all N results" link expanding to the full log
 
 ## UAT-08: Export batch report
 
@@ -83,7 +83,7 @@
 **Covers:** Use Case 4 (search); user story "Search test history by serial number"
 **Given** at least two test records exist with different serial numbers
 **When** I type part of a serial number into the history search field
-**Then** only matching records are shown, and clearing the search restores the full list
+**Then** only matching records are shown — including matches older than the five-row preview — and clearing the search restores the preview list
 
 ## UAT-10: Light/dark theme toggle
 

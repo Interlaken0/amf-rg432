@@ -18,7 +18,8 @@ Updated September 2026 to document the as-built Tailwind interface.
 |  | Operator name              |  |  | Serial        Status   Operator  Time   ||
 |  +----------------------------+  |  | RG432-003    (● pass)  Greg     14:30   ||
 |  | ( Register Board )         |  |  | RG432-002    (● fail)  Greg     14:25   ||
-|  +----------------------------+  |  +-----------------------------------------+|
+|  +----------------------------+  |  |  View all 47 results (42 more) ↓        ||
+|                                  |  +-----------------------------------------+|
 |                                  |                                             |
 |  RUN TEST                        |                                             |
 |  +----------------------------+  |                                             |
@@ -47,7 +48,7 @@ Updated September 2026 to document the as-built Tailwind interface.
 | PASS/FAIL badge | Large colour-coded result (emerald/rose) + diagnostics | Use Case 2 steps 6–7; Use Case 3; User Story "obvious visual feedback" |
 | Error banner | Operator-readable failure messages incl. diagnostic log path | Use Case 2 alternative 4a |
 | History search field | Filters records by serial, operator, or status | Use Case 4; User Story "search test history" |
-| History table | Persistent record with status pills | Use Case 4 |
+| History table | Persistent record with status pills; latest 5 shown, "View all" expands | Use Case 4 |
 | Export CSV button | Saves batch report via save dialog | Use Case 4 alternative 3b; Use Case 5 |
 
 ## Design decisions
@@ -59,6 +60,9 @@ Updated September 2026 to document the as-built Tailwind interface.
 - **Giant colour-coded result** — a plain-text status was an accessibility risk
   in a noisy factory; the badge is unambiguous at arm's length.
 - **Searchable history** — Sarah's audit workflow needs filtering, not scrolling.
+- **History preview, not a wall of rows** — the table shows the five most
+  recent results by default and expands on demand; search still scans every
+  record, so hidden rows are never lost to the fold.
 - **Light/dark themes** — factory PCs run in variable lighting; the toggle
   persists across restarts and defaults to the OS preference.
 - **Tailwind utility styling** — see ADR 008 for the styling decision.

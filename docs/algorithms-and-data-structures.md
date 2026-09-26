@@ -47,9 +47,11 @@ case-sensitive grouping split `greg`/`Greg` into two operators.
 
 ## Search filter
 
-History search is a linear scan over visible rows with case-folded
+History search is a linear scan over the full record set with case-folded
 substring matching — the right choice at this data volume; an index-backed
-SQL `LIKE` would be premature for a screen-sized dataset.
+SQL `LIKE` would be premature for a screen-sized dataset. The rendered view
+then caps the list at a five-row preview unless expanded or a search is
+active, which is a display constraint only, never a data one.
 
 ## Race-condition handling
 

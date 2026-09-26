@@ -24,5 +24,3 @@ export function initialiseDatabase(): Database.Database {
 
   return db;
 }
-
-export { getDatabase, setDatabase };

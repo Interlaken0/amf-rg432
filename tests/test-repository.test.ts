@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../src/main/migrations';
-import { setDatabase } from '../src/main/database';
+import { setDatabase } from '../src/main/db-instance';
 import { saveBoard, getBoard, saveTest, getTests } from '../src/main/test-repository';
 
 /**

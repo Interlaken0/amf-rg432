@@ -29,6 +29,7 @@ function App() {
   const [result, setResult] = useState<TestResult | null>(null);
   const [history, setHistory] = useState<TestResult[]>([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [mockMode, setMockMode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,14 @@ function App() {
       entry.status.includes(query)
     );
   });
+
+  // History is newest-first; collapsed view shows a short preview while
+  // searching always searches every record.
+  const HISTORY_PREVIEW = 5;
+  const searching = historySearch.trim().length > 0;
+  const visibleHistory =
+    historyExpanded || searching ? filteredHistory : filteredHistory.slice(0, HISTORY_PREVIEW);
+  const hiddenCount = filteredHistory.length - visibleHistory.length;
 
   /**
    * Handle mock mode toggle
@@ -346,7 +355,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHistory.map((entry) => (
+                  {visibleHistory.map((entry) => (
                     <tr
                       key={entry.id}
                       className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
@@ -375,6 +384,32 @@ function App() {
                         {history.length === 0
                           ? 'No tests recorded yet.'
                           : 'No records match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                  {hiddenCount > 0 && (
+                    <tr>
+                      <td colSpan={4} className="pt-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryExpanded(true)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          View all {filteredHistory.length} results ({hiddenCount} more) ↓
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  {historyExpanded && !searching && filteredHistory.length > HISTORY_PREVIEW && (
+                    <tr>
+                      <td colSpan={4} className="pt-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryExpanded(false)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          Show recent {HISTORY_PREVIEW} only ↑
+                        </button>
                       </td>
                     </tr>
                   )}
