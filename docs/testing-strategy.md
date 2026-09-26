@@ -25,6 +25,33 @@ surface to pen-test, no load to benchmark, no server to harden. The coverage
 is deliberate, not absent — the risk register records what was deferred and
 why (code signing, shared-PC access control).
 
+## Test lifecycle
+
+The states a single test can move through, and what each transition
+persisted:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Rejected: serial not found in boards<br/>(thrown error - nothing saved)
+    [*] --> Running: Start Test on a registered board
+
+    Running --> Pass: result returned, all checks pass
+    Running --> Fail: returned result judged a fail<br/>(real DLL: any measurement byte > 6<br/>in stage-1 semantics - mock: simulated)
+    Running --> Aborted: DLL error / USB disconnect /<br/>missing or mismatched .dat
+
+    Aborted --> PersistedFail: saved as status=fail<br/>+ diagnostic log written
+    Pass --> Recorded: saved to tests table
+    Fail --> Recorded: saved to tests table
+    PersistedFail --> Recorded
+    Recorded --> [*]: shown in history + included in reports
+```
+
+Three exit routes, one guarantee: **every completed test attempt leaves a
+row**. A rejected request never produces a row (no test happened), but an
+aborted test does — an operator who watched a test die mid-run can point at
+its record and its diagnostic log. The `pending` status exists in the schema
+CHECK constraint for a future queued-test feature but is never written today.
+
 ## Running the suite
 
 ```powershell

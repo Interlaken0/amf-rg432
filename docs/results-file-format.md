@@ -5,6 +5,37 @@ application locates and parses it, and how the parsed data is linked to the
 SQLite test history. Based on the stage-1 DLL reference guide
 (`dll/RG432Test1.0_ReadMe.md`).
 
+## 0. End-to-end flow
+
+One click of Start Test runs this whole chain — the `.dat` file is the
+hand-off point between the DLL's world and ours:
+
+```mermaid
+sequenceDiagram
+    participant Op as Operator
+    participant UI as Renderer (React)
+    participant Main as Main Process
+    participant DLL as RG432Test DLL
+    participant FS as results dir
+    participant DB as SQLite
+
+    Op->>UI: Start Test (serial)
+    UI->>Main: invoke run-test
+    Main->>DB: getBoard(serial)
+    DB-->>Main: board row (or throw: not registered)
+    Main->>DLL: InitialiseDevice(serial)
+    DLL-->>Main: return code + error code
+    Main->>DLL: RunTest(testType)
+    DLL->>FS: write <file>.dat (serial prefix + 4 bytes)
+    Main->>DLL: GetResult(wDetails, resultsFile)
+    DLL-->>Main: wDetails=0x1234 + absolute path
+    Main->>FS: parseResultsFile() - serial check, last 4 bytes
+    Main->>DB: saveTest(status, diagnostics)
+    Main-->>UI: TestResult
+    UI-->>Op: PASS / FAIL badge
+    Note over Main,DB: On any error: diagnostic log written,<br/>aborted attempt saved as fail, error shown
+```
+
 ## 1. File creation
 
 `RunTest(byType, byErrorCode)` writes a binary `.dat` file into the results

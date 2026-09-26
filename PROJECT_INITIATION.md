@@ -147,9 +147,9 @@ The application is organised into a clean four-tier pipeline:
 
 ```mermaid
 flowchart TD
-    A[User Interface Layer<br>Electron + React] --> B[Application Logic Layer<br>Node.js / Electron main process]
-    B --> C[Native Interop Layer<br>Koffi FFI]
-    C --> D[Hardware & Storage Layer<br>RG432 board + SQLite]
+    A[User Interface Layer<br>Electron + React] -->|IPC invoke via preload bridge| B[Application Logic Layer<br>Node.js / Electron main process]
+    B -->|Koffi FFI calls| C[Native Interop Layer<br>DllInterop (real / mock)]
+    C -->|DLL calls + .dat files / SQL| D[Hardware & Storage Layer<br>RG432 board + SQLite]
 
     subgraph UI [Operator input, live progress, Pass / Fail confirmation]
         A
@@ -329,17 +329,6 @@ The following table maps every Level 4 Software Developer Knowledge, Skill, and 
 3. Do you approve the two additional technical features (mock mode and diagnostic log export)?
 4. Do you approve the Security & Data Protection approach for handling operator names and test records?
 5. Do you have any amendments to the product understanding captured above?
-
-### Information Needed to Start Sprint 1
-- A demo DLL from Jeff (acceptable as a temporary stand-in for the final DLL) and any synthesised test files or mock files referenced in the process brief.
-- Confirmed data fields for the board registration form (beyond serial number and operator name).
-- Expected test cycle time and Pass/Fail criteria for each board.
-- Any factory IT constraints that may affect the installer or runtime requirements.
-- Whether Jeff already has a preferred testing EXE or DLL that must be integrated instead of, or alongside, the supplied synthesised files.
-- Company data retention policy for manufacturing test records and operator details.
-
-### Action
-Once Jeff confirms or amends the above, the first sprint (Environment & UI Setup) can begin immediately on 3 July 2026.
 
 ---
 
