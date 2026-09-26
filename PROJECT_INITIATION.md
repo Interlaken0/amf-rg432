@@ -6,7 +6,7 @@
 | Developer | Greg (Level 4 Software Developer Apprentice) |
 | Stakeholder / Product Owner | Jeff |
 | Document Date | 29 June 2026 |
-| Status | Draft — pending stakeholder approval |
+| Status | Approved — in delivery (final sprint: hardware UAT and sign-off) |
 | Project Start Date | Friday 3 July 2026 |
 | Project End Date | Friday 28 August 2026 |
 | Sprint Count | 4 two-week sprints (8 weeks total) |
@@ -61,6 +61,20 @@ For the complete day-by-day sprint breakdown, Fibonacci point allocations, cerem
 | Developer | Greg | Own the full SDLC: UI design, application logic, DLL integration, database design, testing framework, CI/CD, documentation, and UAT support. |
 | Stakeholder | Jeff | Provide a demo DLL for early integration work and synthesised test files; supply the final DLL when ready; supply physical prototype units for final integration testing; provide UAT sign-off. |
 | End Users | Factory operators | Use the application on the production line to program, verify, and log each RG432 board. |
+
+### Who owns which SDLC stage
+
+This is a solo project, so Greg carries the technical stages end to end —
+the split below shows where responsibility sits rather than who codes.
+
+| SDLC stage | Responsible | How it plays out here |
+|---|---|---|
+| Requirements & analysis | Jeff (owns) + Greg (captures) | Jeff defines what the rig must do; Greg turns it into personas, user stories and use cases Jeff can review |
+| Design | Greg | Wireframe, schema, ADRs — reviewed at sprint check-ins |
+| Implementation | Greg | All application code, tests and CI |
+| Testing | Greg (automated) + Jeff (acceptance) | Greg owns the Vitest suite; Jeff runs the UAT scripts and signs off |
+| Deployment | Greg (build) + Jeff (release decision) | Greg produces the installer; Jeff approves it for the factory floor |
+| Maintenance | Greg | Documented codebase so a handover is possible after the apprenticeship |
 
 ---
 
@@ -119,7 +133,8 @@ Jeff has approved the following recommendation. It is not part of the test rig b
 | Version control | Git + GitHub | Standard source control, collaboration, and issue tracking. |
 | Commit standards | Conventional Commits + commitlint | Automated commit-message linting to keep the history readable and changelog-friendly. |
 | CI/CD | GitHub Actions | Automated linting, type checking, unit tests, and Windows installer build on every push; sprint-end release workflow generates changelog, tag, and GitHub Release on manual trigger. |
-| Testing | Vitest + Playwright | Vitest for unit and integration tests; Playwright for end-to-end UI tests. |
+| Testing | Vitest | Unit and integration tests, including the real-DLL integration suite; end-to-end coverage is handled by the UAT scripts on the installed app rather than a UI automation layer. |
+| Styling | Tailwind CSS | Utility-first styling with the Vite plugin; powers the dark/light themes and the PASS/FAIL result badge. |
 | Documentation | Markdown in repository | ADRs, sprint retrospectives, and test plans kept alongside the code. |
 | Code documentation | JSDoc | Standardised inline documentation for modules, functions, and native interop interfaces. |
 | Diagrams | Mermaid | Architecture and workflow diagrams embedded directly in Markdown under version control. |
@@ -159,6 +174,21 @@ flowchart TD
 3. Application (or mock simulator) invokes DLL functions to program and verify the board.
 4. Result is parsed and stored in the database.
 5. UI shows Pass / Fail and, on failure, exports a diagnostic log.
+
+### Programming paradigm
+
+The codebase is primarily **event-driven**: the Electron main process
+exposes IPC handlers (`register-board`, `run-test`, `export-batch-report`)
+and the React renderer is event/state-driven throughout — there is no
+long-running procedural flow anywhere. Object-oriented structure sits
+underneath it: the native layer is built around the `DllInterop` interface
+with interchangeable real/mock implementations, and persistence lives
+behind a repository module rather than scattered SQL.
+
+That mix is the appropriate paradigm for this kind of app rather than a
+habit: a test rig is reactive by nature (button → IPC → DLL → result event
+→ UI update), and forcing a procedural main loop or a class hierarchy
+everywhere would fight the platform rather than use it.
 
 ---
 
@@ -210,7 +240,7 @@ The application will handle manufacturing data, including board serial numbers a
 - **Audit trail**: Every test record includes a timestamp, operator, and board serial number to support manufacturing traceability and compliance.
 
 ### Build and Deployment Security
-- **Windows code signing**: The final installer and executable will be code-signed to prevent tampering and to avoid Windows SmartScreen warnings.
+- **Windows code signing**: Deferred — whether a certificate is needed before factory deployment is a decision for Jeff (see the risk register). Until then the installer triggers a SmartScreen "unrecognised app" prompt, which is expected for unsigned builds.
 - **Secure development**: Code will be reviewed through pull requests, linted, and tested in CI before merging to the main branch.
 
 ---
@@ -249,7 +279,7 @@ The following table maps every Level 4 Software Developer Knowledge, Skill, and 
 | S10 | Build, manage and deploy code into the relevant environment | GitHub Actions CI/CD pipeline and Windows installer packaging for factory deployment. |
 | S11 | Apply an appropriate software development approach according to the relevant paradigm | Agile/Kanban methodology and object-oriented/event-driven design in React/Electron. |
 | S12 | Follow software designs and functional or technical specifications | Implementation follows the product brief, DLL interface specifications, and UI designs. |
-| S13 | Follow testing frameworks and methodologies | Vitest, Playwright, and the project test strategy. |
+| S13 | Follow testing frameworks and methodologies | Vitest and the project test strategy (`docs/testing-strategy.md`). |
 | S14 | Follow company, team or client approaches to continuous integration, version and source control | Git + GitHub, Conventional Commits, commitlint, and GitHub Actions, applied as a solo developer. |
 | S15 | Communicate software solutions and ideas to technical and non-technical stakeholders | This PID, stakeholder emails, Trello board, sprint reviews, and UAT demos. |
 | S16 | Apply algorithms, logic and data structures | Database schema design, validation algorithms, and data structures for managing test records and queues. |
@@ -267,10 +297,10 @@ The following table maps every Level 4 Software Developer Knowledge, Skill, and 
 | K6 | How teams work effectively to produce software and how to contribute appropriately | Working as a solo developer while collaborating with the stakeholder (Jeff), maintaining a shared Trello board, and running sprint reviews. |
 | K7 | Software design approaches and patterns, to identify reusable solutions to commonly occurring problems | Four-tier architecture, separation of concerns, and ADRs. |
 | K8 | Organisational policies and procedures relating to the tasks being undertaken, and when to follow them (e.g. GDPR sensitive data) | Security & Data Protection section in this PID. |
-| K9 | Algorithms, logic and data structures relevant to software development | Validation logic, database queries, sorting and searching of test records, and queue management for test flow. |
+| K9 | Algorithms, logic and data structures relevant to software development | Validation logic, database indexing, binary `.dat` parsing, and sorting/searching of test records — detailed in `docs/algorithms-and-data-structures.md`. |
 | K10 | Principles and uses of relational and non-relational databases | SQLite relational database design, schema normalisation, and comparison with non-relational alternatives in ADRs. |
 | K11 | Software designs and functional or technical specifications | Architecture Overview and implementation of the product brief and DLL specifications. |
-| K12 | Software testing frameworks and methodologies | Vitest, Playwright, test strategy, and Agile testing practices. |
+| K12 | Software testing frameworks and methodologies | Vitest, the test strategy document, and Agile testing practices. |
 
 ### Behaviours
 
@@ -313,4 +343,4 @@ Once Jeff confirms or amends the above, the first sprint (Environment & UI Setup
 
 ---
 
-*Document prepared by Greg. Pending stakeholder review and approval.*
+*Document prepared by Greg. Approved by Jeff — the questions in section 13 were confirmed at kick-off; the application is built and in final hardware UAT.*

@@ -34,6 +34,8 @@ npm run build   # type-check, bundle, and produce the Windows installer
 - [Database design notes](docs/database/design-notes.md) — ERD, normalisation, constraints, indexing
 - [Results file (.dat) format](docs/results-file-format.md) — DLL output layout and processing
 - [Batch report & diagnostic log formats](docs/reports-and-logs.md)
+- [Testing strategy](docs/testing-strategy.md) — test types, coverage and evidence
+- [Algorithms & data structures](docs/algorithms-and-data-structures.md)
 - [Architecture decision records](docs/adr/) — framework, SQLite, Koffi, migrations, TypeScript, JSDoc, CI/CD, Tailwind
 
 ### Process
