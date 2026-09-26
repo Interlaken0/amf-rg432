@@ -62,7 +62,7 @@
 **Covers:** Use Case 2 alternative 4a; diagnostic log export
 **Given** mock mode is enabled and a registered board exists
 **When** a simulated USB disconnect occurs during a test (small random chance per run — repeat tests until it triggers, or verify via unit test `simulates a USB disconnect`)
-**Then** the UI shows the failure message including the path to the diagnostic log file under `userData/logs/`, and the log file exists containing context, error and stack
+**Then** the UI shows the failure message including the path to the diagnostic log file under `userData/logs/`, the log file exists containing context, error and stack, and the aborted test is recorded in history as a fail so the attempt stays traceable
 
 ## UAT-07: Test history persists
 
@@ -76,7 +76,7 @@
 **Covers:** Use Case 5 (reporting); Sprint 4 batch reports
 **Given** the database contains test results (run `npm run seed` beforehand for realistic data if needed)
 **When** I click **Export CSV** and choose a save location
-**Then** a CSV file is written containing the summary totals, per-operator breakdown (case-insensitive grouping), and every test row, and it opens cleanly in Excel with serial numbers intact (all-digit serials display as text, not scientific notation)
+**Then** a CSV file is written containing a labelled SUMMARY, an OPERATOR BREAKDOWN (case-insensitive grouping, per-operator pass rates), a FAILED TESTS section and the full TEST RESULTS log newest-first, and it opens cleanly in Excel with serial numbers intact (all-digit serials export as `SN-<digits>` text, not scientific notation)
 
 ## UAT-09: Search test history
 

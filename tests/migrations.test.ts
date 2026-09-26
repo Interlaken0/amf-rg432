@@ -38,6 +38,6 @@ describe('database migrations', () => {
       .prepare('SELECT id FROM migrations ORDER BY id')
       .all() as { id: number }[];
 
-    expect(rows.map((row) => row.id)).toEqual([1, 2]);
+    expect(rows.map((row) => row.id)).toEqual([1, 2, 3]);
   });
 });

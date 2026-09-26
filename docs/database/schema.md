@@ -36,3 +36,7 @@ Migrations are tracked in the `migrations` table. Each migration is applied once
 |-----------|-------------|
 | 001 | Create the `boards` table. |
 | 002 | Create the `tests` table with a foreign key to `boards`. |
+| 003 | Index `tests.board_id` for the history join. |
+
+See [design notes](design-notes.md) for the ERD, normalisation, constraints
+and indexing rationale.
