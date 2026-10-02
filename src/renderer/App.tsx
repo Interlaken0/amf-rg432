@@ -12,6 +12,15 @@ const THEME_KEY = 'rg432-theme';
 /**
  * Read the saved theme or fall back to the OS preference
  */
+/**
+ * Unwrap the "Error invoking remote method '...': Error:" prefix Electron
+ * adds to IPC handler rejections, leaving the operator-facing message
+ */
+function errorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.replace(/^Error invoking remote method '[^']+':\s*/, '').replace(/^Error:\s*/, '');
+}
+
 function initialTheme(): Theme {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') {
@@ -95,7 +104,7 @@ function App() {
       setConfirmReRegister(false);
       setResult(null);
     } catch (err) {
-      setError(`Could not generate a serial: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Could not generate a serial: ${errorMessage(err)}`);
     }
   };
 
@@ -128,7 +137,7 @@ function App() {
       setConfirmReRegister(false);
       setNotice(`Board ${registration.serialNumber} registered and ready for testing.`);
     } catch (err) {
-      setError(`Registration failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Registration failed: ${errorMessage(err)}`);
     }
   };
 
@@ -150,7 +159,7 @@ function App() {
       setResult(testResult);
       setHistory(await window.electronAPI.getTestHistory());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsRunning(false);
     }
@@ -182,7 +191,7 @@ function App() {
         setNotice(`Batch report saved to ${path}`);
       }
     } catch (err) {
-      setError(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Export failed: ${errorMessage(err)}`);
     }
   };
 
