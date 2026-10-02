@@ -14,11 +14,11 @@ function isRealDllAvailable(): boolean {
   }
 
   const candidates = [
-    join(process.cwd(), 'dll', 'RG432Test1.0.dll'),
+    join(process.cwd(), 'dll', 'RG432Test1.1.dll'),
     join(
       (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '',
       'dll',
-      'RG432Test1.0.dll',
+      'RG432Test1.1.dll',
     ),
   ];
 

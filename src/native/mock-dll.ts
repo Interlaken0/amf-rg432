@@ -105,7 +105,7 @@ export function createMockDllInterop(options?: MockDllOptions): DllInterop {
      * Run a test - simulates four ~1s test stages like the real RunTest,
      * can simulate a USB disconnect, and requires a connected device
      */
-    runTest: async (serialNumber: string): Promise<TestResult> => {
+    runTest: async (serialNumber: string, failurePercent?: number): Promise<TestResult> => {
       if (!deviceConnected || !registeredBoards.has(serialNumber)) {
         throw new Error(`Board ${serialNumber} has not been registered`);
       }
@@ -121,7 +121,9 @@ export function createMockDllInterop(options?: MockDllOptions): DllInterop {
         }
       }
 
-      return runTest(serialNumber, failRate);
+      // failurePercent (0-100, stage-2 byType semantics) overrides the
+      // configured fail rate when supplied
+      return runTest(serialNumber, failurePercent === undefined ? failRate : failurePercent / 100);
     },
   };
 }

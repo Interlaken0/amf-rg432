@@ -7,7 +7,7 @@ import type { BoardRegistration, DllInterop, TestResult } from '../shared/types'
 /**
  * DLL file name constant
  */
-const DLL_FILE_NAME = 'RG432Test1.0.dll';
+const DLL_FILE_NAME = 'RG432Test1.1.dll';
 
 /**
  * Maximum path length for Windows
@@ -78,7 +78,7 @@ async function resolveDllPath(): Promise<string> {
   }
 
   throw new Error(
-    `RG432Test1.0.dll was not found. Searched: ${candidates.join(', ')}`,
+    `${DLL_FILE_NAME} was not found. Searched: ${candidates.join(', ')}`,
   );
 }
 
@@ -106,22 +106,54 @@ async function ensureResultsPath(): Promise<string> {
 }
 
 /**
- * Parsed contents of a .dat results file
+ * Parsed contents of a stage-2 .dat results file
  */
 interface ResultsFile {
   serial: string;
-  measurements: number[];
+  /** Status digit values 0-15, one per test stage (0xF = skipped) */
+  digits: number[];
+  /** Four float32 QA values, in the order generated */
+  qa: number[];
 }
 
 /**
- * Parse a .dat results file written by RunTest
+ * Stage names for the four test stages, supplied by Jeff
+ */
+const STAGE_NAMES = [
+  'input data acquisition',
+  'output data generation',
+  'spectral tests',
+  'algorithm accuracy',
+];
+
+/**
+ * Meaning of each status digit in the wDetails word and the .dat file
+ */
+const DIGIT_MEANINGS: Record<number, string> = {
+  0: 'pass',
+  1: 'board not connected',
+  2: 'connexion faulty',
+  3: 'board not communicating',
+  4: 'no output generated',
+  5: 'no input detected',
+  6: 'maths error',
+  7: 'output waveform faulty',
+  8: 'input waveform faulty',
+  9: 'spectral distortion',
+  15: 'test skipped',
+};
+
+const SKIPPED = 0xf;
+
+/**
+ * Parse a stage-2 .dat results file written by RunTest
  *
- * Empirically verified layout (stage-1 DLL): the serial number comes
- * FIRST as a null-padded ASCII field, and the four measurement bytes
- * are the LAST four bytes of the file. The readme's ordering
- * description is misleading - verified against real output.
+ * Empirically verified 276-byte layout (RG432Test1.1.dll):
+ *   offset 0     256 bytes  serial, ASCII null-padded
+ *   offset 256   4 bytes    status digits, one byte per test (0-F)
+ *   offset 260   16 bytes   four float32 LE QA values
  * @param filePath The path to the results file
- * @returns The parsed serial number and measurement bytes
+ * @returns The parsed serial, status digits and QA values
  * @throws Error if the file cannot be read or is too short
  */
 function parseResultsFile(filePath: string): ResultsFile {
@@ -132,30 +164,60 @@ function parseResultsFile(filePath: string): ResultsFile {
     throw new Error(`Failed to read results file ${filePath}: ${error}`);
   }
 
-  if (buffer.length < 5) {
+  if (buffer.length < 276) {
     throw new Error(`Results file ${filePath} is too short (${buffer.length} bytes)`);
   }
 
   const nullIndex = buffer.indexOf(0);
-  const serialEnd = nullIndex === -1 ? buffer.length - 4 : nullIndex;
+  const serialEnd = nullIndex === -1 ? 256 : Math.min(nullIndex, 256);
   const serial = buffer.subarray(0, serialEnd).toString('latin1');
-  const measurements = Array.from(buffer.subarray(buffer.length - 4));
 
-  return { serial, measurements };
+  const digits = Array.from(buffer.subarray(buffer.length - 20, buffer.length - 16));
+  const qa = [
+    buffer.readFloatLE(buffer.length - 16),
+    buffer.readFloatLE(buffer.length - 12),
+    buffer.readFloatLE(buffer.length - 8),
+    buffer.readFloatLE(buffer.length - 4),
+  ];
+
+  return { serial, digits, qa };
 }
 
 /**
- * Determine pass/fail from the measurement bytes
- *
- * Stage 1 semantics: each byte is a simulated measurement in the range 0-6.
- * A test passes only if all four bytes are within that range. When Jeff's
- * final DLL documents real result codes this function should be updated to
- * match.
- * @param bytes The measurement bytes from the results file
+ * Decode the four status digits into a human-readable summary of the
+ * first failing stage. A test that fails skips the remaining stages, so
+ * the first non-zero, non-skipped digit is the one that matters.
+ * @param digits The four status digit values
+ * @returns The decoded summary, or the pass message
+ */
+function decodeStatus(digits: number[]): string {
+  const firstFailure = digits.findIndex((digit) => digit !== 0 && digit !== SKIPPED);
+  if (firstFailure === -1) {
+    return 'All four tests passed';
+  }
+  const meaning = DIGIT_MEANINGS[digits[firstFailure]] ?? `unknown code ${digits[firstFailure]}`;
+  return `Test ${firstFailure + 1} (${STAGE_NAMES[firstFailure]}): ${meaning}`;
+}
+
+/**
+ * Determine pass/fail from the status digits - stage-2 semantics: only
+ * an all-zero word means pass.
+ * @param digits The four status digit values
  * @returns True if the test passed
  */
-function isPassing(bytes: number[]): boolean {
-  return bytes.every((byte) => byte <= 6);
+function isPassing(digits: number[]): boolean {
+  return digits.every((digit) => digit === 0);
+}
+
+/**
+ * Determine whether a failed result is retryable. Per Jeff: digits 6-9
+ * are outright failures; any other failure is a connexion-type fault
+ * that may be retested.
+ * @param digits The four status digit values
+ * @returns True if the operator may retry the test
+ */
+function isRetryable(digits: number[]): boolean {
+  return !isPassing(digits) && !digits.some((digit) => digit >= 6 && digit <= 9);
 }
 
 /**
@@ -226,13 +288,14 @@ export function createRealDllInterop(): DllInterop {
 
   /**
    * Call the RunTest DLL function
-   * @param testType The test type (0 for standard test)
+   * @param failurePercent Overall failure probability 0-100 (stage-2
+   *   byType semantics - the DLL derives a per-test rate internally)
    * @throws Error if the DLL call fails
    */
-  async function callRunTest(testType: number): Promise<void> {
+  async function callRunTest(failurePercent: number): Promise<void> {
     const { runTestFn } = await getLib();
     const errorCode = [0];
-    const result = runTestFn(testType, errorCode);
+    const result = runTestFn(failurePercent, errorCode);
 
     if (result !== 0) {
       throw new Error(
@@ -269,10 +332,10 @@ export function createRealDllInterop(): DllInterop {
       await callInitialiseDevice(registration.serialNumber);
     },
 
-    runTest: async (serialNumber: string): Promise<TestResult> => {
-      await callRunTest(0);
+    runTest: async (serialNumber: string, failurePercent = 0): Promise<TestResult> => {
+      await callRunTest(failurePercent);
       const { details, resultsFile } = await callGetResult();
-      const { serial, measurements } = parseResultsFile(resultsFile);
+      const { serial, digits, qa } = parseResultsFile(resultsFile);
 
       if (serial !== serialNumber) {
         throw new Error(
@@ -280,7 +343,9 @@ export function createRealDllInterop(): DllInterop {
         );
       }
 
-      const passed = isPassing(measurements);
+      const passed = isPassing(digits);
+      const statusDetails = `0x${details.toString(16).padStart(4, '0')}`;
+      const testSummary = decodeStatus(digits);
 
       return {
         id: 0,
@@ -288,7 +353,11 @@ export function createRealDllInterop(): DllInterop {
         operator: '',
         timestamp: new Date().toISOString(),
         status: passed ? 'pass' : 'fail',
-        diagnostics: `Details=0x${details.toString(16).padStart(4, '0')}, measurements=[${measurements.join(',')}], file=${resultsFile}`,
+        retryable: isRetryable(digits),
+        statusDetails,
+        testSummary,
+        qa,
+        diagnostics: `Details=${statusDetails}, summary="${testSummary}", qa=[${qa.join(',')}], file=${resultsFile}`,
       };
     },
   };
