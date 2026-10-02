@@ -36,11 +36,15 @@ function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [confirmReRegister, setConfirmReRegister] = useState(false);
+  const [failurePercent, setFailurePercent] = useState(20);
 
   const trimmedSerial = serialNumber.trim();
   const serialInvalid = trimmedSerial.length > 0 && !isValidSerial(trimmedSerial);
   const canRegister = isValidSerial(trimmedSerial) && operator.trim().length > 0;
-  const canTest = serialNumber.trim().length > 0 && !isRunning;
+  // A pass or terminal (non-retryable) fail ends this board's flow; only a
+  // retryable connexion fail keeps Start Test enabled (TestScheduleNotes §9).
+  const boardDone = result !== null && !result.retryable;
+  const canTest = trimmedSerial.length > 0 && !isRunning && !boardDone;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -50,6 +54,7 @@ function App() {
   useEffect(() => {
     window.electronAPI.getMockMode().then(setMockMode);
     window.electronAPI.getTestHistory().then(setHistory);
+    window.electronAPI.getFailurePercent().then(setFailurePercent);
   }, []);
 
   const filteredHistory = history.filter((entry) => {
@@ -88,6 +93,7 @@ function App() {
     try {
       setSerialNumber(await window.electronAPI.nextBoardSerial());
       setConfirmReRegister(false);
+      setResult(null);
     } catch (err) {
       setError(`Could not generate a serial: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -148,6 +154,20 @@ function App() {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  /**
+   * Persist a new overall failure-percentage target (0-100, per Jeff's
+   * byType semantics); invalid input reverts to the saved value
+   */
+  const handleFailurePercent = async (value: string): Promise<void> => {
+    const percent = Number(value);
+    if (!Number.isFinite(percent)) {
+      setFailurePercent(await window.electronAPI.getFailurePercent());
+      return;
+    }
+    const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+    setFailurePercent(await window.electronAPI.setFailurePercent(clamped));
   };
 
   /**
@@ -248,6 +268,7 @@ function App() {
                 onChange={(event) => {
                   setSerialNumber(event.target.value);
                   setConfirmReRegister(false);
+                  setResult(null);
                 }}
                 type="text"
                 placeholder="Serial number (e.g. RG432-001)"
@@ -292,6 +313,21 @@ function App() {
           {/* Test execution */}
           <section className={card}>
             <h2 className={heading}>Run Test</h2>
+            <label className="mb-3 flex items-center justify-between gap-3 text-sm">
+              <span className="text-zinc-600 dark:text-zinc-400">
+                Failure % (0–100)
+              </span>
+              <input
+                className={inputClass + ' w-20 text-right'}
+                type="number"
+                min={0}
+                max={100}
+                value={failurePercent}
+                onChange={(event) => handleFailurePercent(event.target.value)}
+                aria-label="Failure percentage"
+                disabled={isRunning}
+              />
+            </label>
             <button
               onClick={handleTest}
               type="button"
@@ -413,7 +449,7 @@ function App() {
                               : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                           }`}
                         >
-                          {entry.status === 'pass' ? '●' : '●'} {entry.status}
+                          ● {entry.status}
                         </span>
                       </td>
                       <td className="py-2 pr-4">{entry.operator}</td>
