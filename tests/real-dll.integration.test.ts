@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import Database from 'better-sqlite3';
 import { createRealDllInterop } from '../src/native/real-dll';
 import { saveBoard, saveTest, getTests } from '../src/main/test-repository';
@@ -11,9 +12,53 @@ import { runMigrations } from '../src/main/migrations';
 const DLL_PATH = join(process.cwd(), 'dll', 'RG432Test1.1.dll');
 const CAN_RUN = process.platform === 'win32' && existsSync(DLL_PATH);
 
+const REG_KEY = 'HKCU\\SOFTWARE\\LittleStone\\432\\TestSettings';
+
+/**
+ * Read the results-path registry value, or undefined when unset
+ */
+function readResultsPath(): string | undefined {
+  try {
+    const output = execFileSync('reg.exe', ['query', REG_KEY, '/v', 'szPath'], {
+      encoding: 'utf-8',
+      windowsHide: true,
+    });
+    return /\sszPath\s+REG_SZ\s+(.+)$/m.exec(output)?.[1].trim();
+  } catch {
+    return undefined;
+  }
+}
+
 // Only runs on Windows when the stage-2 DLL is present (skipped in CI,
 // where dll/*.dll is gitignored and therefore not checked out)
 describe.skipIf(!CAN_RUN)('real DLL integration (stage-2 DLL)', () => {
+  // ensureResultsPath writes the results folder into the registry; the
+  // temp dirs used here would otherwise leak into a live machine setting.
+  // Snapshot the real value and put it back afterwards.
+  let savedResultsPath: string | undefined;
+
+  beforeAll(() => {
+    savedResultsPath = readResultsPath();
+  });
+
+  afterAll(() => {
+    try {
+      if (savedResultsPath === undefined) {
+        execFileSync('reg.exe', ['delete', REG_KEY, '/v', 'szPath', '/f'], {
+          windowsHide: true,
+        });
+      } else {
+        execFileSync(
+          'reg.exe',
+          ['add', REG_KEY, '/v', 'szPath', '/t', 'REG_SZ', '/d', savedResultsPath, '/f'],
+          { windowsHide: true },
+        );
+      }
+    } catch {
+      // Registry restore is best-effort; a missing key is fine
+    }
+  });
+
   beforeEach(() => {
     // Route results + DB to a temp location so the test leaves no state behind
     process.env.RG432_USERDATA = join(tmpdir(), `rg432-test-${Date.now()}`);
