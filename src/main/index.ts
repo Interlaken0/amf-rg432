@@ -11,6 +11,7 @@ import {
   saveBoard,
   saveTest,
   getTests,
+  nextBoardSerial,
 } from './test-repository';
 import { createDllInterop } from '../native/dll-interop';
 import { createSettingsStore } from './settings';
@@ -109,6 +110,20 @@ ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolea
 });
 
 /**
+ * IPC handler for getting the fault-injection failure percentage
+ */
+ipcMain.handle('get-failure-percent', async (): Promise<number> => {
+  return settings.get().failurePercent;
+});
+
+/**
+ * IPC handler for setting the fault-injection failure percentage (0-100)
+ */
+ipcMain.handle('set-failure-percent', async (_event, percent: number): Promise<number> => {
+  return settings.setFailurePercent(Number(percent)).failurePercent;
+});
+
+/**
  * IPC handler for board registration
  */
 ipcMain.handle('register-board', async (_event, registration: BoardRegistration): Promise<void> => {
@@ -133,6 +148,13 @@ ipcMain.handle('board-exists', async (_event, serialNumber: string): Promise<boo
 });
 
 /**
+ * IPC handler for generating the next free RG432-XXXX board serial
+ */
+ipcMain.handle('next-board-serial', async (): Promise<string> => {
+  return nextBoardSerial();
+});
+
+/**
  * IPC handler for running a test
  */
 ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestResult> => {
@@ -142,7 +164,7 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
   }
 
   try {
-    const result = await dllInterop.runTest(serialNumber);
+    const result = await dllInterop.runTest(serialNumber, settings.get().failurePercent);
     const resultWithOperator = { ...result, operator: board.operator };
     saveTest(resultWithOperator);
     return resultWithOperator;

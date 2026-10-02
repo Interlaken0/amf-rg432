@@ -27,6 +27,9 @@ Stores the result of every test run.
 | tested_at | TEXT | NOT NULL | ISO 8601 timestamp of the test. |
 | status | TEXT | NOT NULL, CHECK | `pass`, `fail`, or `pending`. |
 | diagnostics | TEXT | nullable | Optional failure message or diagnostic detail. |
+| status_details | TEXT | nullable | Raw `wDetails` status word, e.g. `0x2fff` (real-DLL results only). |
+| test_summary | TEXT | nullable | Decoded first-failure summary, e.g. "Test 2 (output data generation): no output generated". |
+| qa1–qa4 | REAL | nullable | The four QA float values from the results file (added in migration 004). |
 
 ## Migrations
 
@@ -37,6 +40,7 @@ Migrations are tracked in the `migrations` table. Each migration is applied once
 | 001 | Create the `boards` table. |
 | 002 | Create the `tests` table with a foreign key to `boards`. |
 | 003 | Index `tests.board_id` for the history join. |
+| 004 | Add stage-2 result columns to `tests`: `status_details`, `test_summary`, `qa1`–`qa4`. |
 
 See [design notes](design-notes.md) for the ERD, normalisation, constraints
 and indexing rationale.

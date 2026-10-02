@@ -80,6 +80,20 @@ function App() {
   };
 
   /**
+   * Generate the next free RG432-XXXX serial into the serial field
+   */
+  const handleNewBoard = async (): Promise<void> => {
+    setError(null);
+    setNotice(null);
+    try {
+      setSerialNumber(await window.electronAPI.nextBoardSerial());
+      setConfirmReRegister(false);
+    } catch (err) {
+      setError(`Could not generate a serial: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  /**
    * Handle board registration
    */
   const handleRegister = async (): Promise<void> => {
@@ -238,6 +252,7 @@ function App() {
                 type="text"
                 placeholder="Serial number (e.g. RG432-001)"
                 aria-label="Serial number"
+                disabled={isRunning}
               />
               <input
                 className={inputClass}
@@ -246,20 +261,31 @@ function App() {
                 type="text"
                 placeholder="Operator name"
                 aria-label="Operator name"
+                disabled={isRunning}
               />
               {serialInvalid && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Letters, numbers and dashes only (3–32 characters), e.g. RG432-001.
                 </p>
               )}
-              <button
-                onClick={handleRegister}
-                type="button"
-                disabled={!canRegister}
-                className={confirmReRegister ? buttonWarn : buttonPrimary}
-              >
-                {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleNewBoard}
+                  type="button"
+                  disabled={isRunning}
+                  className={buttonSecondary}
+                >
+                  New Board
+                </button>
+                <button
+                  onClick={handleRegister}
+                  type="button"
+                  disabled={!canRegister || isRunning}
+                  className={(confirmReRegister ? buttonWarn : buttonPrimary) + ' flex-1'}
+                >
+                  {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -287,19 +313,36 @@ function App() {
                 className={`mt-4 rounded-xl border-2 px-4 py-5 text-center ${
                   result.status === 'pass'
                     ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                    : 'border-rose-500 bg-rose-50 dark:bg-rose-950/40'
+                    : result.retryable
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40'
+                      : 'border-rose-500 bg-rose-50 dark:bg-rose-950/40'
                 }`}
               >
                 <p
                   className={`text-4xl font-extrabold tracking-widest ${
                     result.status === 'pass'
                       ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-rose-600 dark:text-rose-400'
+                      : result.retryable
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  {result.status === 'pass' ? '✓ PASS' : '✗ FAIL'}
+                  {result.status === 'pass' ? '✓ PASS' : result.retryable ? '⚠ RETEST' : '✗ FAIL'}
                 </p>
-                {result.diagnostics && (
+                {result.testSummary && (
+                  <p className="mt-3 text-sm font-medium">{result.testSummary}</p>
+                )}
+                {result.statusDetails && (
+                  <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    {result.statusDetails}
+                  </p>
+                )}
+                {result.retryable && (
+                  <p className="mt-3 text-xs">
+                    Bad connexion — check the board and start the test again.
+                  </p>
+                )}
+                {result.diagnostics && !result.testSummary && (
                   <p className="mt-3 break-all text-left text-xs text-zinc-500 dark:text-zinc-400">
                     {result.diagnostics}
                   </p>
@@ -363,6 +406,7 @@ function App() {
                       <td className="py-2 pr-4 font-mono text-xs sm:text-sm">{entry.serialNumber}</td>
                       <td className="py-2 pr-4">
                         <span
+                          title={entry.testSummary ?? undefined}
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                             entry.status === 'pass'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'

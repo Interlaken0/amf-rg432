@@ -13,8 +13,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runTest: (serialNumber: string) => ipcRenderer.invoke('run-test', serialNumber),
   isBoardRegistered: (serialNumber: string) =>
     ipcRenderer.invoke('board-exists', serialNumber),
+  nextBoardSerial: () => ipcRenderer.invoke('next-board-serial'),
   getTestHistory: () => ipcRenderer.invoke('get-test-history'),
   getMockMode: () => ipcRenderer.invoke('get-mock-mode'),
   setMockMode: (enabled: boolean) => ipcRenderer.invoke('set-mock-mode', enabled),
+  getFailurePercent: () => ipcRenderer.invoke('get-failure-percent'),
+  setFailurePercent: (percent: number) => ipcRenderer.invoke('set-failure-percent', percent),
   exportBatchReport: () => ipcRenderer.invoke('export-batch-report'),
 });

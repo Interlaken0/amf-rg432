@@ -6,6 +6,8 @@ import { dirname } from 'node:path';
  */
 export interface AppSettings {
   mockMode: boolean;
+  /** Overall failure probability 0-100 passed to RunTest's byType */
+  failurePercent: number;
 }
 
 /**
@@ -14,6 +16,7 @@ export interface AppSettings {
 export interface SettingsStore {
   get: () => AppSettings;
   setMockMode: (enabled: boolean) => AppSettings;
+  setFailurePercent: (percent: number) => AppSettings;
 }
 
 /**
@@ -21,6 +24,7 @@ export interface SettingsStore {
  */
 const DEFAULT_SETTINGS: AppSettings = {
   mockMode: false,
+  failurePercent: 20,
 };
 
 /**
@@ -49,6 +53,12 @@ export function createSettingsStore(filePath: string): SettingsStore {
     get: () => ({ ...current }),
     setMockMode: (enabled: boolean) => {
       current = { ...current, mockMode: enabled };
+      persist();
+      return { ...current };
+    },
+    setFailurePercent: (percent: number) => {
+      const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+      current = { ...current, failurePercent: clamped };
       persist();
       return { ...current };
     },

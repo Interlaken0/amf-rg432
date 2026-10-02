@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../src/main/migrations';
 import { setDatabase } from '../src/main/db-instance';
-import { saveBoard, getBoard, saveTest, getTests } from '../src/main/test-repository';
+import { saveBoard, getBoard, saveTest, getTests, nextBoardSerial } from '../src/main/test-repository';
 
 /**
  * Test suite for test repository functions
@@ -96,6 +96,35 @@ describe('test repository', () => {
   });
 
   /**
+   * Test that stage-2 result fields round-trip through the repository
+   */
+  it('persists stage-2 result fields', () => {
+    saveBoard({
+      serialNumber: 'RG432-004',
+      operator: 'Greg',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+
+    saveTest({
+      id: 0,
+      serialNumber: 'RG432-004',
+      operator: 'Greg',
+      timestamp: '2026-01-02T00:00:00.000Z',
+      status: 'fail',
+      statusDetails: '0x2fff',
+      testSummary: 'Test 1 (input data acquisition): connexion faulty',
+      qa: [-0.46, 0.58, 0.43, 1.15],
+      retryable: true,
+      diagnostics: 'Details=0x2fff',
+    });
+
+    const stored = getTests()[0];
+    expect(stored.statusDetails).toBe('0x2fff');
+    expect(stored.testSummary).toBe('Test 1 (input data acquisition): connexion faulty');
+    expect(stored.qa).toEqual([-0.46, 0.58, 0.43, 1.15]);
+  });
+
+  /**
    * Test that saveTest throws when saving a test for an unregistered board
    */
   it('throws when saving a test for an unregistered board', () => {
@@ -109,5 +138,23 @@ describe('test repository', () => {
     };
 
     expect(() => saveTest(result)).toThrow('Board UNKNOWN-001 is not registered');
+  });
+
+  /**
+   * Test that nextBoardSerial returns the lowest unused RG432-XXXX serial
+   */
+  it('generates the lowest free RG432-XXXX serial', () => {
+    // Existing boards use 3-digit serials that don't match the pattern
+    expect(nextBoardSerial()).toBe('RG432-0001');
+
+    saveBoard({ serialNumber: 'RG432-0001', operator: 'G', timestamp: '2026-01-01T00:00:00.000Z' });
+    expect(nextBoardSerial()).toBe('RG432-0002');
+
+    saveBoard({ serialNumber: 'RG432-0002', operator: 'G', timestamp: '2026-01-01T00:00:00.000Z' });
+    expect(nextBoardSerial()).toBe('RG432-0003');
+
+    // A non-contiguous hex serial doesn't block the lower gap
+    saveBoard({ serialNumber: 'RG432-ABCD', operator: 'G', timestamp: '2026-01-01T00:00:00.000Z' });
+    expect(nextBoardSerial()).toBe('RG432-0003');
   });
 });
