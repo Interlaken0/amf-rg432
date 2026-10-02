@@ -41,7 +41,7 @@ function createWindow(): void {
     height: 768,
     title: 'AMF RG432 Test Rig',
     webPreferences: {
-      preload: join(__dirname, '../preload/preload.js'),
+      preload: join(__dirname, '../preload/preload.cjs.js'),
       contextIsolation: true,
       sandbox: true,
     },

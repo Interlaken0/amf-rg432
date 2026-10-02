@@ -23,12 +23,11 @@ export function runMigrations(db: Database.Database): void {
   const appliedRows = db.prepare('SELECT id FROM migrations').all() as { id: number }[];
   const appliedIds = new Set(appliedRows.map((row) => row.id));
 
-  // In dev mode, look for migrations in the source directory
-  // In production, look in the compiled dist directory
-  let migrationsDir = join(__dirname, 'migrations');
-  if (!existsSync(migrationsDir)) {
-    migrationsDir = join(__dirname, '../../src/main/migrations');
-  }
+  // Prefer the canonical source migrations when they exist (dev and
+  // tests); a stale copy in dist/main/migrations must not shadow them.
+  // The packaged app only ships the dist copy.
+  const srcDir = join(__dirname, '../../src/main/migrations');
+  const migrationsDir = existsSync(srcDir) ? srcDir : join(__dirname, 'migrations');
 
   const files = readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))

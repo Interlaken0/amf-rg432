@@ -1,8 +1,8 @@
 # Open Questions for Jeff — RG432Test1.1 Integration
 
-**Status: all answered by Jeff** — responses recorded in
-`open-questions-jeff(responses).md`. Answers are summarised under each
-question below.
+**Status: all answered by Jeff** — his verbatim responses are recorded in
+[`open-questions-jeff-responses.md`](open-questions-jeff-responses.md)
+alongside this file. Answers are summarised under each question below.
 
 Questions arising from the stage-2 DLL reference guide
 (`RG432Test1.1_ReadMe.md`) and `TestScheduleNotes.md`. Ordered by what

@@ -40,6 +40,17 @@ export default defineConfig({
               entry: 'src/main/preload.ts',
               formats: ['cjs'],
             },
+            rollupOptions: {
+              output: {
+                // vite-plugin-electron merges our lib.formats with its
+                // default ('es' under "type": "module"), so both es and
+                // cjs outputs are emitted. Give each a distinct filename -
+                // a shared name races and produces a corrupt mixed-format
+                // file that breaks the sandboxed preload. The app loads
+                // preload.cjs.js (guaranteed CommonJS).
+                entryFileNames: '[name].[format].js',
+              },
+            },
           },
         },
       },
