@@ -26,6 +26,12 @@ erDiagram
         TEXT tested_at
         TEXT status
         TEXT diagnostics
+        TEXT status_details
+        TEXT test_summary
+        REAL qa1
+        REAL qa2
+        REAL qa3
+        REAL qa4
     }
 ```
 
@@ -39,12 +45,15 @@ re-keyed.
 
 The schema is small, but it still pays to walk the forms explicitly:
 
-- **1NF (atomic values):** every column holds one value. The tempting
-  violation would be storing the four measurement bytes as a list inside one
-  test row — instead they live inside the `diagnostics` string as the raw
-  artefact record, which is genuinely one blob of diagnostic text, not
-  separately-queryable fields. If engineering ever needed per-byte queries,
-  that would be a fourth table (`test_measurements`), not a comma list.
+- **1NF (atomic values):** every column holds one value. Jeff's
+  TestScheduleNotes explicitly required the stage-2 fields in their own
+  columns — `status_details` (the `0x0000` status word), `test_summary`
+  (the decoded interpretation) and `qa1`–`qa4` (one REAL per float32 QA
+  value) — rather than a packed list inside one column. All six are
+  nullable: stage-1 rows migrated forward carry no such data, and mock or
+  aborted results may legitimately omit them. The `diagnostics` string
+  remains alongside as the raw artefact record — genuinely one blob of
+  diagnostic text, not separately-queryable fields.
 - **2NF (no partial dependency):** every non-key column depends on the whole
   primary key. With single-column `id` keys this is automatic, but it is why
   `operator` is *not* split out of `tests` — the operator belongs to the
@@ -100,11 +109,13 @@ SELECT serial_number, operator, registered_at
 FROM boards WHERE serial_number = ?;
 
 -- Persist a result, foreign key enforced
-INSERT INTO tests (board_id, operator, tested_at, status, diagnostics)
-VALUES (?, ?, ?, ?, ?) RETURNING id;
+INSERT INTO tests (board_id, operator, tested_at, status, diagnostics,
+                   status_details, test_summary, qa1, qa2, qa3, qa4)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id;
 
 -- History: join back to the board for its serial
-SELECT t.id, b.serial_number, t.operator, t.tested_at, t.status, t.diagnostics
+SELECT t.id, b.serial_number, t.operator, t.tested_at, t.status, t.diagnostics,
+       t.status_details, t.test_summary, t.qa1, t.qa2, t.qa3, t.qa4
 FROM tests t JOIN boards b ON b.id = t.board_id
 ORDER BY t.id DESC;
 ```

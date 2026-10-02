@@ -105,40 +105,48 @@ function csvDate(ms: number): string {
 }
 
 /**
- * Diagnostics split into report columns
+ * A test row split into its report columns
  */
-interface ParsedDiagnostics {
-  resultCode: string;
-  measurements: string;
+interface DetailColumns {
+  statusDetails: string;
+  testSummary: string;
+  qa: string[];
   resultsFile: string;
   notes: string;
 }
 
 /**
- * Split a diagnostics string into report columns
- * Real-DLL diagnostics follow 'Details=0x...., measurements=[..], file=..dat'
- * and map onto dedicated columns; anything else (mock failures, errors)
- * lands in Notes unchanged.
- * @param diagnostics The stored diagnostics string
- * @returns The parsed column values
+ * Map a test result onto the detail columns
+ *
+ * Stage-2 rows carry status_details/test_summary/qa columns directly;
+ * the diagnostics string only supplies the results-file name and any
+ * free-text notes (mock failures, aborted tests). A raw 'Details=' line
+ * is preserved in Notes only when the row has no structured status
+ * word - legacy stage-1 results, where it was the only record.
+ * @param test The test result
+ * @returns The detail column values
  */
-function parseDiagnostics(diagnostics?: string): ParsedDiagnostics {
-  const parsed: ParsedDiagnostics = { resultCode: '', measurements: '', resultsFile: '', notes: '' };
-  const raw = diagnostics?.trim();
-  if (!raw) {
-    return parsed;
-  }
+function detailColumns(test: TestResult): DetailColumns {
+  const raw = test.diagnostics?.trim() ?? '';
+  const fileMatch = /file=(.+)$/.exec(raw);
+  const resultsFile = fileMatch ? (fileMatch[1].split(/[\\/]/).pop() ?? fileMatch[1]) : '';
 
-  const match = /^Details=(0x[0-9a-fA-F]+), measurements=\[([^\]]*)\], file=(.+)$/.exec(raw);
-  if (!match) {
-    parsed.notes = raw;
-    return parsed;
-  }
+  const qa = ['', '', '', ''];
+  test.qa?.forEach((value, index) => {
+    if (index < 4) {
+      qa[index] = String(Math.round(value * 10000) / 10000);
+    }
+  });
 
-  parsed.resultCode = match[1];
-  parsed.measurements = match[2].split(',').join(', ');
-  parsed.resultsFile = match[3].split(/[\\/]/).pop() ?? match[3];
-  return parsed;
+  const notes = raw && (!raw.startsWith('Details=') || !test.statusDetails) ? raw : '';
+
+  return {
+    statusDetails: test.statusDetails ?? '',
+    testSummary: test.testSummary ?? '',
+    qa,
+    resultsFile,
+    notes,
+  };
 }
 
 /**
@@ -180,19 +188,20 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
   lines.push('');
 
   const detailHeader =
-    'ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes';
+    'ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes';
   const detailRow = (test: TestResult): string => {
-    const diag = parseDiagnostics(test.diagnostics);
+    const cols = detailColumns(test);
     return [
       String(test.id),
       csvSerial(test.serialNumber),
       csvCell(test.operator),
       csvTimestamp(test.timestamp),
       test.status,
-      diag.resultCode,
-      csvCell(diag.measurements),
-      csvCell(diag.resultsFile),
-      csvCell(diag.notes),
+      cols.statusDetails,
+      csvCell(cols.testSummary),
+      ...cols.qa,
+      csvCell(cols.resultsFile),
+      csvCell(cols.notes),
     ].join(',');
   };
 

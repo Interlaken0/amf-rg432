@@ -57,7 +57,7 @@ describe('buildBatchReportCsv', () => {
     expect(csv).toContain('1,RG432-0001,Dave,20/09/2026 10:00:00,pass');
   });
 
-  it('splits real-DLL diagnostics into dedicated columns', () => {
+  it('maps stage-2 result fields into dedicated columns', () => {
     const csv = buildBatchReportCsv(
       [
         {
@@ -65,15 +65,18 @@ describe('buildBatchReportCsv', () => {
           serialNumber: 'RG432-0007',
           operator: 'Dave',
           timestamp: '2026-09-25T09:00:00Z',
-          status: 'pass',
+          status: 'fail',
+          statusDetails: '0x2fff',
+          testSummary: 'Test 1 (input data acquisition): connexion faulty',
+          qa: [-0.4616, 0.5784, 0.4317, 1.151],
           diagnostics:
-            'Details=0x1234, measurements=[6,0,6,4], file=C:\\Users\\Greg\\AppData\\Roaming\\rg432-test-rig\\results\\260925-090000-RG432-0007.dat',
+            'Details=0x2fff, summary="Test 1 (input data acquisition): connexion faulty", qa=[-0.4616,0.5784,0.4317,1.151], file=C:\\Users\\Greg\\AppData\\Roaming\\rg432-test-rig\\results\\260925-090000-RG432-0007.dat',
         },
       ],
       new Date(),
     );
     expect(csv).toContain(
-      '7,RG432-0007,Dave,25/09/2026 09:00:00,pass,0x1234,"6, 0, 6, 4",260925-090000-RG432-0007.dat,',
+      '7,RG432-0007,Dave,25/09/2026 09:00:00,fail,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260925-090000-RG432-0007.dat,',
     );
   });
 

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
+import { decodeStatus, isPassing, isRetryable } from '../shared/status';
 
 /**
  * DLL file name constant
@@ -117,35 +118,6 @@ interface ResultsFile {
 }
 
 /**
- * Stage names for the four test stages, supplied by Jeff
- */
-const STAGE_NAMES = [
-  'input data acquisition',
-  'output data generation',
-  'spectral tests',
-  'algorithm accuracy',
-];
-
-/**
- * Meaning of each status digit in the wDetails word and the .dat file
- */
-const DIGIT_MEANINGS: Record<number, string> = {
-  0: 'pass',
-  1: 'board not connected',
-  2: 'connexion faulty',
-  3: 'board not communicating',
-  4: 'no output generated',
-  5: 'no input detected',
-  6: 'maths error',
-  7: 'output waveform faulty',
-  8: 'input waveform faulty',
-  9: 'spectral distortion',
-  15: 'test skipped',
-};
-
-const SKIPPED = 0xf;
-
-/**
  * Parse a stage-2 .dat results file written by RunTest
  *
  * Empirically verified 276-byte layout (RG432Test1.1.dll):
@@ -181,43 +153,6 @@ function parseResultsFile(filePath: string): ResultsFile {
   ];
 
   return { serial, digits, qa };
-}
-
-/**
- * Decode the four status digits into a human-readable summary of the
- * first failing stage. A test that fails skips the remaining stages, so
- * the first non-zero, non-skipped digit is the one that matters.
- * @param digits The four status digit values
- * @returns The decoded summary, or the pass message
- */
-function decodeStatus(digits: number[]): string {
-  const firstFailure = digits.findIndex((digit) => digit !== 0 && digit !== SKIPPED);
-  if (firstFailure === -1) {
-    return 'All four tests passed';
-  }
-  const meaning = DIGIT_MEANINGS[digits[firstFailure]] ?? `unknown code ${digits[firstFailure]}`;
-  return `Test ${firstFailure + 1} (${STAGE_NAMES[firstFailure]}): ${meaning}`;
-}
-
-/**
- * Determine pass/fail from the status digits - stage-2 semantics: only
- * an all-zero word means pass.
- * @param digits The four status digit values
- * @returns True if the test passed
- */
-function isPassing(digits: number[]): boolean {
-  return digits.every((digit) => digit === 0);
-}
-
-/**
- * Determine whether a failed result is retryable. Per Jeff: digits 6-9
- * are outright failures; any other failure is a connexion-type fault
- * that may be retested.
- * @param digits The four status digit values
- * @returns True if the operator may retry the test
- */
-function isRetryable(digits: number[]): boolean {
-  return !isPassing(digits) && !digits.some((digit) => digit >= 6 && digit <= 9);
 }
 
 /**

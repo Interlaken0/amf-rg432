@@ -31,12 +31,12 @@ Operator,Tests,Passed,Failed,Pass Rate
 Greg,10,9,1,90.0%
 
 FAILED TESTS
-ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes
-6,RG432-007,Greg,24/09/2026 09:15:31,fail,0x00ff,"9, 0, 3, 0",260924-091531-RG432-007.dat,
+ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes
+6,RG432-0007,Greg,24/09/2026 09:15:31,fail,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260924-091531-RG432-0007.dat,
 
 TEST RESULTS
-ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File,Notes
-10,RG432-003,Greg,25/09/2026 14:40:24,pass,0x1234,"0, 0, 3, 0",260925-144024-RG432-003.dat,
+ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes
+10,RG432-0003,Greg,25/09/2026 14:40:24,pass,0x0000,All four tests passed,-0.0224,0.5546,-0.2907,0.075,260925-144024-RG432-0003.dat,
 ```
 
 ### Conventions
@@ -57,12 +57,18 @@ ID,Serial Number,Operator,Tested At,Status,Result Code,Measurements,Results File
   covering the earliest-to-latest test date.
 - **Timestamps are human-readable UK format** (`DD/MM/YYYY HH:mm:ss`, UTC)
   rather than raw ISO strings.
-- **Diagnostics are split into columns** — real-DLL records unpack into
-  `Result Code` (the `wDetails` word), `Measurements` (the four bytes), and
-  `Results File` (the `.dat` filename only — the folder is always
-  `<userData>/results`, so the full path adds noise). Mock failures and other
-  messages land in `Notes` unchanged. Everything still traces back to the
-  source artefact in `docs/results-file-format.md`.
+- **Stage-2 results land in dedicated columns** — `Status Details` (the
+  raw `wDetails` word, e.g. `0x2fff`), `Test Summary` (the decoded first
+  failure with its stage name), `QA1`–`QA4` (the four float32 QA values,
+  rounded to four decimals), and `Results File` (the `.dat` filename
+  only — the folder is always `<userData>/Results`, so the full path
+  adds noise). These come straight from the `tests` table columns added
+  in migration 004, not from re-parsing the diagnostics string. Mock
+  results populate the same columns, so a mock-mode CSV looks identical.
+- **Notes carries free text only** — aborted-test and error messages,
+  and (for legacy stage-1 rows with no structured columns) their raw
+  `Details=` line. Everything still traces back to the source artefact
+  in `docs/results-file-format.md`.
 - Aggregation runs in `summariseTests()` over the result set already fetched
   for the detail section — one query, one aggregation pass.
 

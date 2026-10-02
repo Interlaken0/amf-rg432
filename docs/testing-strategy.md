@@ -9,7 +9,7 @@ table says which apply and why.
 | Type | Applies? | What we do | Evidence |
 |---|---|---|---|
 | **Unit** | Yes | Pure functions tested in isolation: report aggregation, CSV building, serial validation, `.dat` parsing, repository queries against in-memory SQLite | `tests/` — 39 tests via Vitest (`npm test`) |
-| **Integration** | Yes | `run-test` flow exercised end to end: registration → DLL/mock → `.dat` → SQLite. The real-DLL suite runs against the actual `RG432Test1.0.dll` through Koffi (skipped in CI where `dll/` is gitignored) | `tests/integration.test.ts`, `tests/real-dll.integration.test.ts` |
+| **Integration** | Yes | `run-test` flow exercised end to end: registration → DLL/mock → `.dat` → SQLite. The real-DLL suite runs against the actual `RG432Test1.1.dll` through Koffi (skipped in CI where `dll/` is gitignored) | `tests/integration.test.ts`, `tests/real-dll.integration.test.ts` |
 | **System** | Yes | Installed-app smoke test: install the NSIS package on a Windows PC, register, run real and mock tests, export, restart persistence | Sprint 4 Week 2 install verification; `docs/uat/uat-scripts.md` UAT-01/07 |
 | **User Acceptance** | Yes | Given/When/Then scripts derived from the use cases, run by Jeff for sign-off | `docs/uat/uat-scripts.md` (UAT-01–10) |
 | **Security** | Partially | Parameterised queries (injection), sandboxed + context-isolated renderer with an allowlisted IPC bridge, strict `script-src 'self'` CSP (inline styles are permitted for Tailwind/React inline styles), inputs validated at the IPC boundary | Security checklist (`AGILE_SDLC_STRATEGY.md`); `src/main/index.ts` handlers; `src/shared/validation.ts` |
@@ -35,22 +35,26 @@ stateDiagram-v2
     [*] --> Rejected: serial not found in boards<br/>(thrown error - nothing saved)
     [*] --> Running: Start Test on a registered board
 
-    Running --> Pass: result returned, all checks pass
-    Running --> Fail: returned result judged a fail<br/>(real DLL: any measurement byte > 6<br/>in stage-1 semantics - mock: simulated)
+    Running --> Pass: wDetails 0x0000<br/>(all four stages pass)
+    Running --> Retestable: fail digit in 1-5<br/>connexion-type fault
+    Running --> Fail: any digit 6-9<br/>terminal board fault
     Running --> Aborted: DLL error / USB disconnect /<br/>missing or mismatched .dat
 
-    Aborted --> PersistedFail: saved as status=fail<br/>+ diagnostic log written
+    Retestable --> RecordedFail: saved as status=fail<br/>amber RETEST badge, retry allowed
+    Aborted --> RecordedFail: saved as status=fail<br/>+ diagnostic log written
     Pass --> Recorded: saved to tests table
     Fail --> Recorded: saved to tests table
-    PersistedFail --> Recorded
+    RecordedFail --> Recorded
     Recorded --> [*]: shown in history + included in reports
 ```
 
-Three exit routes, one guarantee: **every completed test attempt leaves a
+Four exit routes, one guarantee: **every completed test attempt leaves a
 row**. A rejected request never produces a row (no test happened), but an
 aborted test does — an operator who watched a test die mid-run can point at
-its record and its diagnostic log. The `pending` status exists in the schema
-CHECK constraint for a future queued-test feature but is never written today.
+its record and its diagnostic log. Retryable fails (connexion-type faults,
+per Jeff's rule) also persist as `fail` while the UI invites an immediate
+retest. The `pending` status exists in the schema CHECK constraint for a
+future queued-test feature but is never written today.
 
 ## Running the suite
 

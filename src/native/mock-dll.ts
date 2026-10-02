@@ -1,4 +1,5 @@
 import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
+import { decodeStatus, isRetryable, statusWord } from '../shared/status';
 
 /**
  * Options controlling mock hardware simulation
@@ -68,13 +69,34 @@ export async function runTest(serialNumber: string, failRate = 0.5): Promise<Tes
   }
 
   const isPass = Math.random() >= failRate;
+
+  // Simulate the stage-2 status word: a failure hits one random stage
+  // with a random fault digit (1-9); later stages are skipped (0xF)
+  const digits = [0, 0, 0, 0];
+  if (!isPass) {
+    const failedStage = Math.floor(Math.random() * 4);
+    digits[failedStage] = 1 + Math.floor(Math.random() * 9);
+    for (let stage = failedStage + 1; stage < 4; stage++) {
+      digits[stage] = 0xf;
+    }
+  }
+
+  const qa = Array.from({ length: 4 }, () => Math.random() * 2 - 1);
+  const testSummary = decodeStatus(digits);
+
   const result: TestResult = {
     id: resultId++,
     serialNumber,
     operator: board.operator,
     timestamp: new Date().toISOString(),
     status: isPass ? 'pass' : 'fail',
-    diagnostics: isPass ? undefined : 'Mock failure: simulated DLL returned error flag 0x01',
+    retryable: isRetryable(digits),
+    statusDetails: statusWord(digits),
+    testSummary,
+    qa,
+    diagnostics: isPass
+      ? undefined
+      : `Details=${statusWord(digits)}, summary="${testSummary}", qa=[${qa.join(',')}] (simulated)`,
   };
 
   return result;

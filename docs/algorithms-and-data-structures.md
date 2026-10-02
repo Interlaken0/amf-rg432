@@ -23,12 +23,34 @@ index structure, not by application code.
 ## Fixed-offset binary parsing (`.dat`)
 
 `parseResultsFile()` in `src/native/real-dll.ts` treats the results file as
-a byte buffer with a fixed layout: 256-byte null-padded ASCII serial prefix,
-then four measurement bytes at offset 256. Parsing is bounds-checked slicing
-plus ASCII decoding — linear in file size, no scanning. Getting this wrong
-(reading the serial's ASCII bytes as measurements) was the Sprint 3 parser
-bug, and the fix notes are the kind of low-level data-structure reasoning
-the criterion looks for.
+a byte buffer with a fixed layout — verified at 276 bytes: 256-byte
+null-padded ASCII serial prefix, four status-digit bytes at offset 256,
+then four float32 little-endian QA values in the last 16 bytes. Parsing is
+bounds-checked slicing, ASCII decoding and typed float reads — linear in
+file size, no scanning. Getting this wrong (reading the serial's ASCII
+bytes as measurements) was the Sprint 3 parser bug, and the layout was
+re-verified empirically for stage 2 via `scripts/probe-dll.ts` rather than
+trusted from the readme.
+
+## Status-word decoding (lookup table + first-match scan)
+
+The `wDetails` word is four nibbles — a fixed-size digit array decoded by
+`src/shared/status.ts`. `decodeStatus()` is a first-match scan for the
+earliest non-zero, non-`F` digit (a fail aborts the remaining stages, so
+only the first real digit carries meaning), mapped through a digit→meaning
+lookup table — the classic trade of a table for a switch. The same module
+supplies `isPassing()` (all-zero scan) and `isRetryable()` (any digit 6–9
+scan), so real and mock implementations classify identically — one source
+of truth for the classification rules.
+
+## Lowest-free-slot allocation (`nextBoardSerial`)
+
+The New Board button allocates `RG432-XXXX` serials: `nextBoardSerial()`
+scans registered serials through a `^RG432-([0-9A-Fa-f]{4})$` filter into a
+`Set` of used integers, then linear-probes upward from 1 for the first
+unused value — O(n) scan + O(k) probe, deliberate over a `MAX+1` query
+because Jeff asked for the *lowest* available slot ("prefer 124 not 456"),
+which reuses gaps left by deleted or non-sequential boards.
 
 ## Serial validation (regular expression)
 
