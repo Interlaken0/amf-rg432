@@ -50,8 +50,10 @@ The schema is small, but it still pays to walk the forms explicitly:
   columns — `status_details` (the `0x0000` status word), `test_summary`
   (the decoded interpretation) and `qa1`–`qa4` (one REAL per float32 QA
   value) — rather than a packed list inside one column. All six are
-  nullable: stage-1 rows migrated forward carry no such data, and mock or
-  aborted results may legitimately omit them. The `diagnostics` string
+  nullable: stage-1 rows migrated forward carry no such data, and the
+  columns stay optional for any result path that cannot supply them
+  (aborted runs write no row at all). The mock populates the full set,
+  keeping mock rows indistinguishable from real ones in reports. The `diagnostics` string
   remains alongside as the raw artefact record — genuinely one blob of
   diagnostic text, not separately-queryable fields.
 - **2NF (no partial dependency):** every non-key column depends on the whole

@@ -27,7 +27,7 @@ Stores the result of every test run.
 | tested_at | TEXT | NOT NULL | ISO 8601 timestamp of the test. |
 | status | TEXT | NOT NULL, CHECK | `pass`, `fail`, or `pending`. |
 | diagnostics | TEXT | nullable | Optional failure message or diagnostic detail. |
-| status_details | TEXT | nullable | Raw `wDetails` status word, e.g. `0x2fff` (real-DLL results only). |
+| status_details | TEXT | nullable | Raw `wDetails` status word, e.g. `0x2fff` (stage-2 results; the mock emits it too). |
 | test_summary | TEXT | nullable | Decoded first-failure summary, e.g. "Test 2 (output data generation): no output generated". |
 | qa1–qa4 | REAL | nullable | The four QA float values from the results file (added in migration 004). |
 
