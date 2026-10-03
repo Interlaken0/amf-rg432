@@ -92,6 +92,6 @@ just flagging that the readme is the correct version.
 | Function signatures      | Confirmed identical in `RG432TestExports.h` — Koffi bindings unchanged                                |
 | Registry configuration   | Same key; the app already writes `szPath` itself via `ensureResultsPath`                              |
 | Results-path buffer size | `MAX_PATH` (260) — same as stage-1, already handled                                                   |
-| DLL filename             | `isRealDllAvailable()` checks for `RG432Test1.0.dll` — needs updating to `RG432Test1.1.dll`; our code |
+| DLL filename             | Done — `isRealDllAvailable()` and `resolveDllPath()` check for `RG432Test1.1.dll`                 |
 | QA column types          | Four float columns — our schema design decision                                                       |
 | Installer packaging      | `dll/` bundling already handled by electron-builder                                                   |

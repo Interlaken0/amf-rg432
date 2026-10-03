@@ -39,8 +39,9 @@ The `wDetails` word is four nibbles — a fixed-size digit array decoded by
 earliest non-zero, non-`F` digit (a fail aborts the remaining stages, so
 only the first real digit carries meaning), mapped through a digit→meaning
 lookup table — the classic trade of a table for a switch. The same module
-supplies `isPassing()` (all-zero scan) and `isRetryable()` (any digit 6–9
-scan), so real and mock implementations classify identically — one source
+supplies `isPassing()` (all-zero scan) and `isRetryable()` (an absence
+check — a failure containing no 6–9 digit is retryable), so real and mock
+implementations classify identically — one source
 of truth for the classification rules.
 
 ## Lowest-free-slot allocation (`nextBoardSerial`)

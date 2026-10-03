@@ -7,7 +7,11 @@ report CSV and the failure diagnostic log. Implemented in
 ## Batch report (CSV)
 
 Triggered by **Export CSV** in the app → save dialog → written to the
-operator-chosen path. Default filename `rg432-batch-report-<YYYY-MM-DD>.csv`.
+operator-chosen path. Default filename
+`rg432-batch-report-<DD-MM-YYYY-HH-MM>.csv` (UK local date and time). The
+export follows the Test History search box: a blank search exports every
+record, a search term exports only the matching rows — the CSV always
+mirrors what the history table is showing.
 RFC-4180-style quoting, CRLF line endings for Excel compatibility.
 
 ### Structure
@@ -32,11 +36,11 @@ Greg,10,9,1,90.0%
 
 FAILED TESTS
 ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes
-6,RG432-0007,Greg,24/09/2026 09:15:31,fail,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260924-091531-RG432-0007.dat,
+6,RG432-0007,Greg,24/09/2026 09:15:31,retest,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260924-091531-RG432-0007.dat,Bad connexion - check the board and retest
 
 TEST RESULTS
 ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes
-10,RG432-0003,Greg,25/09/2026 14:40:24,pass,0x0000,All four tests passed,-0.0224,0.5546,-0.2907,0.075,260925-144024-RG432-0003.dat,
+10,RG432-0003,Greg,25/09/2026 14:40:24,pass,0x0000,All four tests passed,-0.0224,0.5546,-0.2907,0.075,260925-144024-RG432-0003.dat,Passed all four tests
 ```
 
 ### Conventions
@@ -55,8 +59,11 @@ ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,Q
   `None` is emitted when the period had no failures.
 - **Detail rows are newest-first** and the header carries a `Period` line
   covering the earliest-to-latest test date.
-- **Timestamps are human-readable UK format** (`DD/MM/YYYY HH:mm:ss`, UTC)
-  rather than raw ISO strings.
+- **Timestamps are human-readable UK format** (`DD/MM/YYYY HH:mm:ss`,
+  local time) rather than raw ISO strings.
+- **Status uses the displayed verdict** — a retryable failure exports as
+  `retest` (derived from the status word via `displayStatus`), so the CSV
+  matches the on-screen badge rather than the raw stored `fail`.
 - **Stage-2 results land in dedicated columns** — `Status Details` (the
   raw `wDetails` word, e.g. `0x2fff`), `Test Summary` (the decoded first
   failure with its stage name), `QA1`–`QA4` (the four float32 QA values,
@@ -65,10 +72,12 @@ ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,Q
   adds noise). These come straight from the `tests` table columns added
   in migration 004, not from re-parsing the diagnostics string. Mock
   results populate the same columns, so a mock-mode CSV looks identical.
-- **Notes carries free text only** — aborted-test and error messages,
-  and (for legacy stage-1 rows with no structured columns) their raw
-  `Details=` line. Everything still traces back to the source artefact
-  in `docs/results-file-format.md`.
+- **Notes gives the operator's next step** for stage-2 rows: `Passed all
+  four tests`, `Bad connexion - check the board and retest`, or `Failed
+  outright - start a new board`. Mock and legacy stage-1 rows keep their
+  raw free text (aborted-test messages, mock diagnostics, or the raw
+  `Details=` line) instead. Everything still traces back to the source
+  artefact in `docs/results-file-format.md`.
 - Aggregation runs in `summariseTests()` over the result set already fetched
   for the detail section — one query, one aggregation pass.
 
