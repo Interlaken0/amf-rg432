@@ -25,7 +25,7 @@ files (`261003-161554`/`161626-RG432-001F.dat`).
 
 | # | What to do | Expected | Result | Evidence |
 |---|-----------|----------|--------|----------|
-| UAT-01 | Launch app | Header with mock toggle + theme button; registration panel; run-test panel; history table | **PASS** | [app](evidence/uat01-app-window.png), [history](evidence/uat01-history.png) |
+| UAT-01 | Launch app | Header with mock toggle + theme button; registration panel; run-test panel; history table | **PASS** — dev launch + installed build (`AMF RG432 Test Rig Setup 0.0.3.exe`): desktop shortcut, launch, full UI, 131 persisted results | [dev app](evidence/uat01-app-window.png), [dev history](evidence/uat01-history.png), [installed shortcut](evidence/uat01-installed-shortcut.png), [installed app](evidence/uat01-installed-app.png), [installed history](evidence/uat01-installed-history.png) |
 | UAT-02 | Serial `RG432-UAT01`, operator `Jeff` → Register Board | Green "registered and ready for testing" message | **PASS** | [shot](evidence/uat02-registered.png) |
 | UAT-03 | Clear serial and/or operator | Register Board disabled; nothing saved | **PASS** | [empty serial](evidence/uat03-empty-serial.png), [empty operator](evidence/uat03-empty-operator.png) |
 | UAT-04 | Start Test on `RG432-UAT01` | Spinner + lockout during run; badge with decoded summary; history row | **PASS** (`0x0000` PASS, Start Test locked) | [re-register prompt](evidence/uat04-reregister-prompt.png), [pass badge](evidence/uat04-pass-badge.png), [history](evidence/uat04-history-row.png) |
@@ -52,7 +52,12 @@ files (`261003-161554`/`161626-RG432-001F.dat`).
 
 ## For the Jeff session itself
 
-- UAT-01 needs the **built installer on a clean PC** — `npm run build` then
-  take the NSIS installer to a clean machine/VM
+- UAT-01: installer built (`npm run build` → `release\AMF RG432 Test Rig
+  Setup 0.0.3.exe`) and verified installed on the dev PC with the existing
+  database. Still outstanding: a machine with **no** existing `%APPDATA%`
+  data to prove fresh-database creation, and real-DLL mode needs the
+  registry key `HKCU\SOFTWARE\LittleStone\432\TestSettings\szPath` on any
+  machine that doesn't already have it (installer doesn't write it —
+  prerequisite to document or hand Jeff's reg file to)
 - Fill the Result column live during the session; Jeff signs the block at
   the bottom of `uat-scripts.md`
