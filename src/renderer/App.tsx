@@ -74,7 +74,8 @@ function App() {
     return (
       entry.serialNumber.toLowerCase().includes(query) ||
       entry.operator.toLowerCase().includes(query) ||
-      entry.status.includes(query)
+      entry.status.includes(query) ||
+      new Date(entry.timestamp).toLocaleString().toLowerCase().includes(query)
     );
   });
 
@@ -419,11 +420,12 @@ function App() {
               <h2 className={heading + ' mb-0'}>Test History</h2>
               <div className="flex items-center gap-2">
                 <input
-                  className={inputClass + ' w-56'}
+                  className={inputClass + ' w-72'}
                   value={historySearch}
                   onChange={(event) => setHistorySearch(event.target.value)}
                   type="search"
-                  placeholder="Search serial, operator, status…"
+                  placeholder="Search history…"
+                  title="Search by serial, operator, status, or date/time"
                   aria-label="Search test history"
                 />
                 <button onClick={handleExportReport} type="button" className={buttonSecondary}>
