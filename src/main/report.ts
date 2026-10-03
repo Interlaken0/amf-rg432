@@ -1,5 +1,6 @@
 import type { TestResult } from '../shared/types';
 import { isRetryable, statusDigits } from '../shared/status';
+import { displayStatus } from '../shared/history';
 
 /**
  * Aggregated statistics for a batch report
@@ -205,14 +206,8 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
 
   const detailHeader =
     'ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes';
-  // Retryable connexion faults display as 'retest' so the CSV matches
-  // the on-screen badge; the flag is derived from the status word, so
-  // it works for stored rows that predate a retryable column.
-  const statusCell = (test: TestResult): string => {
-    const digits = test.statusDetails ? statusDigits(test.statusDetails) : [];
-    return test.status === 'fail' && isRetryable(digits) ? 'retest' : test.status;
-  };
-
+  // displayStatus keeps the CSV Status cell identical to the on-screen
+  // badge and history pill - retryable words read 'retest'
   const detailRow = (test: TestResult): string => {
     const cols = detailColumns(test);
     return [
@@ -220,7 +215,7 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
       csvSerial(test.serialNumber),
       csvCell(test.operator),
       csvTimestamp(test.timestamp),
-      statusCell(test),
+      displayStatus(test),
       cols.statusDetails,
       csvCell(cols.testSummary),
       ...cols.qa,
