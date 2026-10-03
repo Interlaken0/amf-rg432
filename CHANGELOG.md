@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.6](https://github.com/Interlaken0/amf-rg432/compare/v0.0.5...v0.0.6) (2026-10-03)
+
+
+### Documentation
+
+* backfill changelog entries for 0.0.2-0.0.5 ([29e8592](https://github.com/Interlaken0/amf-rg432/commits/29e8592f118055c2eeed4891e089432cd0f7c9d9))
+
 ## [0.0.5](https://github.com/Interlaken0/amf-rg432/compare/v0.0.4...v0.0.5) (2026-10-03) - Sprint 4, week 2
 
 ### Features
