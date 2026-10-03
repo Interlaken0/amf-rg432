@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.8](https://github.com/Interlaken0/amf-rg432/compare/v0.0.7...v0.0.8) (2026-10-03)
+
+
+### Documentation
+
+* add sprint 4 retrospective ([9c4e0ea](https://github.com/Interlaken0/amf-rg432/commits/9c4e0eacc5b470d4fd5820b241ca5202b8f0a07b))
+* correct sprint 4 retrospective dates ([8aba57c](https://github.com/Interlaken0/amf-rg432/commits/8aba57cdb27bf6433494dd57ad809d4513bf4250))
+
 ## [0.0.7](https://github.com/Interlaken0/amf-rg432/compare/v0.0.6...v0.0.7) (2026-10-03)
 
 ## [0.0.6](https://github.com/Interlaken0/amf-rg432/compare/v0.0.5...v0.0.6) (2026-10-03)
