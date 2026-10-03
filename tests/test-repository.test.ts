@@ -125,6 +125,28 @@ describe('test repository', () => {
   });
 
   /**
+   * Test that hostile input is stored as data, not executed as SQL -
+   * the parameterised-query evidence behind the security checklist
+   */
+  it('treats hostile input as data, not SQL', () => {
+    const hostileSerial = `RG432-9000'); DROP TABLE boards;--`;
+    const hostileOperator = `O'Brien"); DROP TABLE tests;--`;
+
+    saveBoard({
+      serialNumber: hostileSerial,
+      operator: hostileOperator,
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+
+    // Stored literally, no injection executed
+    expect(getBoard(hostileSerial)?.operator).toBe(hostileOperator);
+
+    // Both tables survived - subsequent queries still work
+    expect(nextBoardSerial()).toMatch(/^RG432-/);
+    expect(() => getTests()).not.toThrow();
+  });
+
+  /**
    * Test that saveTest throws when saving a test for an unregistered board
    */
   it('throws when saving a test for an unregistered board', () => {

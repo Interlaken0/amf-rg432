@@ -71,6 +71,7 @@ npm run build   # type-check, bundle, and produce the Windows installer
 - [Results file (.dat) format](docs/results-file-format.md) — verified 276-byte layout, status-word semantics, end-to-end sequence
 - [Batch report & diagnostic log formats](docs/reports-and-logs.md)
 - [Testing strategy](docs/testing-strategy.md) — test types, coverage and evidence
+- [Data protection assessment](docs/data-protection.md) — data inventory, GDPR basis, risks and open actions
 - [Algorithms & data structures](docs/algorithms-and-data-structures.md) — status-word decode, lowest-free-slot allocation, binary parsing
 - [Architecture decision records](docs/adr/) — 001–008 foundations; 009–011 cover the stage-2 decisions (derived verdicts, mock parity, results-file handling)
 

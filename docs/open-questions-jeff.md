@@ -1,8 +1,9 @@
 # Open Questions for Jeff — RG432Test1.1 Integration
 
-**Status: all answered by Jeff** — his verbatim responses are recorded in
-[`open-questions-jeff-responses.md`](open-questions-jeff-responses.md)
+**Status: questions 1–7 answered by Jeff** — his verbatim responses are
+recorded in [`open-questions-jeff-responses.md`](open-questions-jeff-responses.md)
 alongside this file. Answers are summarised under each question below.
+Question 8 is a later data-protection follow-up and is still open.
 
 Questions arising from the stage-2 DLL reference guide
 (`RG432Test1.1_ReadMe.md`) and `TestScheduleNotes.md`. Ordered by what
@@ -88,6 +89,17 @@ just flagging that the readme is the correct version.
 
 **Answered:** acknowledged — Jeff confirmed the readme is correct and
 the rate is passed to `RunTest`.
+
+## 8. Data retention — how long do we keep operator names and test records? (follow-up, open)
+
+The database stores operator names (personal data — GDPR applies) and test
+records indefinitely today. The batch report gives us an export/archive
+route. What retention do you want — e.g. keep everything on the rig PC
+indefinitely, archive via CSV monthly, or purge after a set period? This
+decision feeds `docs/data-protection.md` and, if you want it enforced in
+software, a small retention setting.
+
+**Status:** open — awaiting Jeff's answer.
 
 ---
 
