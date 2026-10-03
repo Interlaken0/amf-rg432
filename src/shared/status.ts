@@ -77,3 +77,18 @@ export function isRetryable(digits: number[]): boolean {
 export function statusWord(digits: number[]): string {
   return `0x${digits.map((digit) => digit.toString(16)).join('')}`;
 }
+
+/**
+ * Parse a status word back into its digit values — the inverse of
+ * statusWord. Returns an empty array for anything that is not a
+ * four-hex-digit word.
+ * @param word The status word, e.g. "0x2fff"
+ * @returns The four status digit values
+ */
+export function statusDigits(word: string): number[] {
+  const match = /^0x([0-9a-f]{4})$/i.exec(word.trim());
+  if (!match) {
+    return [];
+  }
+  return match[1].split('').map((char) => parseInt(char, 16));
+}

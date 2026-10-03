@@ -5,10 +5,12 @@ import { describe, it, expect } from 'vitest';
 import { buildBatchReportCsv, summariseTests } from '../src/main/report';
 import type { TestResult } from '../src/shared/types';
 
+// Timestamps omit 'Z' so new Date() parses them as local time — expected
+// CSV strings then hold in any test-runner timezone.
 const sampleTests: TestResult[] = [
-  { id: 1, serialNumber: 'RG432-0001', operator: 'Dave', timestamp: '2026-09-20T10:00:00Z', status: 'pass' },
-  { id: 2, serialNumber: 'RG432-0002', operator: 'Dave', timestamp: '2026-09-21T10:00:00Z', status: 'fail', diagnostics: 'Error flag 0x01' },
-  { id: 3, serialNumber: 'RG432-0003', operator: 'Sarah', timestamp: '2026-09-22T10:00:00Z', status: 'pass' },
+  { id: 1, serialNumber: 'RG432-0001', operator: 'Dave', timestamp: '2026-09-20T10:00:00', status: 'pass' },
+  { id: 2, serialNumber: 'RG432-0002', operator: 'Dave', timestamp: '2026-09-21T10:00:00', status: 'fail', diagnostics: 'Error flag 0x01' },
+  { id: 3, serialNumber: 'RG432-0003', operator: 'Sarah', timestamp: '2026-09-22T10:00:00', status: 'pass' },
 ];
 
 describe('summariseTests', () => {
@@ -64,7 +66,7 @@ describe('buildBatchReportCsv', () => {
           id: 7,
           serialNumber: 'RG432-0007',
           operator: 'Dave',
-          timestamp: '2026-09-25T09:00:00Z',
+          timestamp: '2026-09-25T09:00:00',
           status: 'fail',
           statusDetails: '0x2fff',
           testSummary: 'Test 1 (input data acquisition): connexion faulty',
@@ -75,9 +77,52 @@ describe('buildBatchReportCsv', () => {
       ],
       new Date(),
     );
+    // Digit 2 is a connexion-type fault - the Status cell reads 'retest'
+    // to match the in-app badge, and Notes carries the operator guidance
     expect(csv).toContain(
-      '7,RG432-0007,Dave,25/09/2026 09:00:00,fail,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260925-090000-RG432-0007.dat,',
+      '7,RG432-0007,Dave,25/09/2026 09:00:00,retest,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260925-090000-RG432-0007.dat,Bad connexion - check the board and retest',
     );
+  });
+
+  it('shows retest for retryable status words, fail for terminal ones', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 10,
+          serialNumber: 'RG432-0010',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:32:00',
+          status: 'fail',
+          statusDetails: '0x3fff',
+          testSummary: 'Test 1 (input data acquisition): board not communicating',
+        },
+        {
+          id: 11,
+          serialNumber: 'RG432-0011',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:33:00',
+          status: 'fail',
+          statusDetails: '0x7fff',
+          testSummary: 'Test 1 (input data acquisition): output waveform faulty',
+        },
+        {
+          id: 12,
+          serialNumber: 'RG432-0012',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:34:00',
+          status: 'pass',
+          statusDetails: '0x0000',
+          testSummary: 'All four tests passed',
+        },
+      ],
+      new Date(),
+    );
+    expect(csv).toContain(',RG432-0010,Greg,03/10/2026 13:32:00,retest,0x3fff');
+    expect(csv).toContain(',RG432-0011,Greg,03/10/2026 13:33:00,fail,0x7fff');
+    expect(csv).toContain(',RG432-0012,Greg,03/10/2026 13:34:00,pass,0x0000');
+    expect(csv).toContain('Bad connexion - check the board and retest');
+    expect(csv).toContain('Failed outright - start a new board');
+    expect(csv).toContain('Passed all four tests');
   });
 
   it('keeps unrecognised diagnostics in the notes column', () => {

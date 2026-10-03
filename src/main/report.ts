@@ -1,4 +1,5 @@
 import type { TestResult } from '../shared/types';
+import { isRetryable, statusDigits } from '../shared/status';
 
 /**
  * Aggregated statistics for a batch report
@@ -81,7 +82,7 @@ function csvSerial(value: string): string {
 }
 
 /**
- * Format a timestamp for the report as DD/MM/YYYY HH:mm:ss (UTC)
+ * Format a timestamp for the report as DD/MM/YYYY HH:mm:ss (local time)
  * @param value The ISO timestamp
  * @returns The readable timestamp
  */
@@ -90,13 +91,15 @@ function csvTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  const [day, time] = date.toISOString().split('T');
-  const [year, month, dateOfMonth] = day.split('-');
-  return `${dateOfMonth}/${month}/${year} ${time.slice(0, 8)}`;
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return (
+    `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
 }
 
 /**
- * Format a timestamp as DD/MM/YYYY (UTC)
+ * Format a timestamp as DD/MM/YYYY (local time)
  * @param ms Epoch milliseconds
  * @returns The readable date
  */
@@ -138,7 +141,20 @@ function detailColumns(test: TestResult): DetailColumns {
     }
   });
 
-  const notes = raw && (!raw.startsWith('Details=') || !test.statusDetails) ? raw : '';
+  const rawNotes = raw && (!raw.startsWith('Details=') || !test.statusDetails) ? raw : '';
+  // Stage-2 rows get an operator-facing note derived from the status
+  // word - the same guidance the app shows for each outcome
+  let notes = rawNotes;
+  if (!notes && test.statusDetails) {
+    const digits = statusDigits(test.statusDetails);
+    if (test.status === 'pass') {
+      notes = 'Passed all four tests';
+    } else if (isRetryable(digits)) {
+      notes = 'Bad connexion - check the board and retest';
+    } else if (digits.length === 4) {
+      notes = 'Failed outright - start a new board';
+    }
+  }
 
   return {
     statusDetails: test.statusDetails ?? '',
@@ -189,6 +205,14 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
 
   const detailHeader =
     'ID,Serial Number,Operator,Tested At,Status,Status Details,Test Summary,QA1,QA2,QA3,QA4,Results File,Notes';
+  // Retryable connexion faults display as 'retest' so the CSV matches
+  // the on-screen badge; the flag is derived from the status word, so
+  // it works for stored rows that predate a retryable column.
+  const statusCell = (test: TestResult): string => {
+    const digits = test.statusDetails ? statusDigits(test.statusDetails) : [];
+    return test.status === 'fail' && isRetryable(digits) ? 'retest' : test.status;
+  };
+
   const detailRow = (test: TestResult): string => {
     const cols = detailColumns(test);
     return [
@@ -196,7 +220,7 @@ export function buildBatchReportCsv(tests: TestResult[], generatedAt: Date): str
       csvSerial(test.serialNumber),
       csvCell(test.operator),
       csvTimestamp(test.timestamp),
-      test.status,
+      statusCell(test),
       cols.statusDetails,
       csvCell(cols.testSummary),
       ...cols.qa,

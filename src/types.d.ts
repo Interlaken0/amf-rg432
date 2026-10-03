@@ -18,7 +18,7 @@ declare global {
       setMockMode: (enabled: boolean) => Promise<boolean>;
       getFailurePercent: () => Promise<number>;
       setFailurePercent: (percent: number) => Promise<number>;
-      exportBatchReport: () => Promise<string | null>;
+      exportBatchReport: (query: string) => Promise<string | null>;
     };
   }
 }

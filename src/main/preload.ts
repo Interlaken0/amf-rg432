@@ -19,5 +19,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setMockMode: (enabled: boolean) => ipcRenderer.invoke('set-mock-mode', enabled),
   getFailurePercent: () => ipcRenderer.invoke('get-failure-percent'),
   setFailurePercent: (percent: number) => ipcRenderer.invoke('set-failure-percent', percent),
-  exportBatchReport: () => ipcRenderer.invoke('export-batch-report'),
+  exportBatchReport: (query: string) => ipcRenderer.invoke('export-batch-report', query),
 });

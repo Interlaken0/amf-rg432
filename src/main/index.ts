@@ -18,6 +18,7 @@ import { createSettingsStore } from './settings';
 import { createDiagnosticLogger } from './diagnostics';
 import { buildBatchReportCsv } from './report';
 import { isValidSerial } from '../shared/validation';
+import { filterTestHistory } from '../shared/history';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -195,15 +196,17 @@ ipcMain.handle('get-test-history', async (): Promise<TestResult[]> => {
 /**
  * IPC handler for exporting a batch report CSV via a save dialog
  */
-ipcMain.handle('export-batch-report', async (): Promise<string | null> => {
+ipcMain.handle('export-batch-report', async (_event, query: string): Promise<string | null> => {
   if (!mainWindow) {
     return null;
   }
 
-  const date = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const stamp = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
   const saveResult = await dialog.showSaveDialog(mainWindow, {
     title: 'Export Batch Report',
-    defaultPath: `rg432-batch-report-${date}.csv`,
+    defaultPath: `rg432-batch-report-${stamp}.csv`,
     filters: [{ name: 'CSV Report', extensions: ['csv'] }],
   });
 
@@ -211,7 +214,7 @@ ipcMain.handle('export-batch-report', async (): Promise<string | null> => {
     return null;
   }
 
-  const csv = buildBatchReportCsv(getTests(), new Date());
+  const csv = buildBatchReportCsv(filterTestHistory(getTests(), query ?? ''), new Date());
   writeFileSync(saveResult.filePath, csv);
   return saveResult.filePath;
 });
