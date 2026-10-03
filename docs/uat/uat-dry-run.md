@@ -55,9 +55,9 @@ files (`261003-161554`/`161626-RG432-001F.dat`).
 - UAT-01: installer built (`npm run build` → `release\AMF RG432 Test Rig
   Setup 0.0.3.exe`) and verified installed on the dev PC with the existing
   database. Still outstanding: a machine with **no** existing `%APPDATA%`
-  data to prove fresh-database creation, and real-DLL mode needs the
-  registry key `HKCU\SOFTWARE\LittleStone\432\TestSettings\szPath` on any
-  machine that doesn't already have it (installer doesn't write it —
-  prerequisite to document or hand Jeff's reg file to)
+  data to prove fresh-database creation. The real-DLL registry key is
+  self-provisioned — `ensureResultsPath` in `src/native/real-dll.ts`
+  writes `szPath` on the first real-DLL run, so no manual setup is needed
+  on a clean PC
 - Fill the Result column live during the session; Jeff signs the block at
   the bottom of `uat-scripts.md`
