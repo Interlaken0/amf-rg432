@@ -168,6 +168,8 @@ The following artefacts were brainstormed with Jeff and define the human-centred
 
 **Sprint Goal:** Add diagnostic logging and batch reporting, test with physical prototype boards, package the Windows installer, and complete UAT sign-off.
 
+*Amended during the sprint: Jeff's New-UPDATE package delivered the stage-2 `RG432Test1.1.dll` mid-Sprint-4, so Week 2 absorbed the stage-2 integration (status-word decoding, retest flow, failure-percentage control, `.dat` parsing) on the `sprint-4-week-2` branch — see the Stage-2 DLL Update section below.*
+
 ### Week 1
 
 | Day | Date | Task | Story Points | Definition of Done |
@@ -214,6 +216,42 @@ Outstanding items from Sprints 2, 3 and 4 are consolidated below. Database tasks
 | Day 5 | Thu 1 Oct | Package the Windows installer and validate it; write UAT scripts; update `docs/database/schema.md`; sprint review with Jeff, UAT sign-off, retrospective and evidence packaging. | 4 | K10 | Installer builds via the CI release job and installs cleanly; UAT signed off; retro captured; evidence bundle exported. |
 
 **Recovery Plan Velocity:** 21 points across 5 days (roughly double the normal rate — days will run long, and scope may be descoped per the Contingency Rules if a task overruns).
+
+---
+
+## Stage-2 DLL Update — Jeff's New-UPDATE Package (October 2026)
+
+Midway through Sprint 4, Jeff delivered an updated package — `RG432Test1.1.dll`, a new exports header, a readme, `TestScheduleNotes.md`, and the Delphi test harness `RG432DLLTest.exe` — replacing the stage-1 demo DLL contract. This changed the test result contract from simple flags to a four-digit status word and introduced a configurable failure percentage.
+
+### What changed contractually
+
+- **Status word (`wDetails`)** — `GetResult` now returns four hex digits, one per test stage: `0` pass, `1`–`5` connexion-type faults, `6`–`9` terminal faults, `F` skipped. Stages stop at the first failure.
+- **Three-way outcome** — per Jeff's written answer: `0x0000` = pass; any `6`–`9` digit = terminal fail (move to the next board); anything else = retryable, shown to the operator as an amber **RETEST** with a "bad connexion" prompt.
+- **Failure percentage** — `RunTest`'s `byType` is now an overall failure probability (0–100), configurable in the app UI and persisted; Jeff's guidance: ~20% for a ~100-record demo set.
+- **`.dat` layout** — 276 bytes: 256-byte ASCII serial, 4 status bytes at offset 256, four float32 LE QA values in the last 16 bytes. Verified empirically via `scripts/probe-dll.ts` and Jeff's own harness.
+- **New Board flow** — serials auto-generated as `RG432-XXXX` (lowest free hex slot), per Jeff's "prefer 124 not 456" answer.
+- **DebugMessages** — confirmed by Jeff as a developer-only diagnostic viewer; excluded from the shipped installer.
+
+### How it was absorbed
+
+The change followed the normal flow rather than bypassing process: seven open questions were written, answered by Jeff, and recorded verbatim (`docs/open-questions-jeff.md` + `docs/open-questions-jeff-responses.md`); an ordered integration plan was drafted (`docs/stage-2-integration-plan.md`); implementation ran on the `sprint-4-week-2` branch in small conventional commits.
+
+### Verification evidence
+
+- Vitest suite green: 51 tests across 12 files, including `tests/real-dll.integration.test.ts` running the live register → test → persist cycle against the real DLL (with registry restoration afterwards).
+- Manual validation through both paths: Jeff's harness at 0% and 100%, and the app itself producing pass (`0x0000`), retest (`0x0004`), and terminal fail (`0x7fff`) results with byte-verified `.dat` files.
+- Both mock and real paths emit identical structured fields — the UI, history and CSV behave identically either way.
+
+### Artefacts
+
+| Artefact | Location |
+|----------|----------|
+| Jeff's verbatim answers | `docs/open-questions-jeff-responses.md` |
+| Integration plan | `docs/stage-2-integration-plan.md` |
+| Status-word + `.dat` spec | `docs/results-file-format.md` |
+| Architecture decisions | ADRs 009–011 (`docs/adr/`) |
+| Live-DLL test suite | `tests/real-dll.integration.test.ts` |
+| Updated UAT scripts | `docs/uat/uat-scripts.md` (UAT-01–12) |
 
 ---
 
@@ -307,6 +345,7 @@ The following risks are tracked because they depend on external factors or could
 | Risk | Likelihood | Impact | Mitigation | Owner |
 |------|------------|--------|------------|-------|
 | Final DLL is not delivered on time | Medium | High | Use the demo DLL and mock mode to continue development; the adapter layer is isolated. | Jeff |
+| Stage-2 DLL contract changes mid-sprint | Occurred | High | Jeff's New-UPDATE package replaced the result contract in Sprint 4; handled through the open-questions record and staged integration plan, and absorbed on `sprint-4-week-2` without destabilising `main`. | Greg and Jeff |
 | Physical prototype hardware is not available | Medium | High | Validate against the test DLL and mock; defer physical integration until hardware arrives. | Jeff |
 | Windows installer packaging issues | Low | Medium | Test the installer early in Sprint 4 on a clean Windows VM. | Greg |
 | Factory PC restrictions block deployment | Low | High | Build a standalone installer and avoid admin-only dependencies. | Greg |
@@ -324,9 +363,9 @@ The following apprenticeship KSB criteria are evidenced directly by project arte
 | S3 | Link code to data sets | `src/main/database.ts`, `src/main/test-repository.ts` and the migration runner connect the application to SQLite using parameterised queries; the Recovery Plan seed script and batch report exercise data reads/writes end to end; `docs/reports-and-logs.md` documents the report/log export schemas; `docs/database/design-notes.md` annotates the queries that link code to the dataset; `tests/test-repository.test.ts` verifies the data-access layer. |
 | K8 | Data protection and handling sensitive data | The Security Checklist requires parameterised queries and no hardcoded secrets; Recovery Plan Day 1 adds a data protection section to ADR 002 covering operator PII stored in the `boards`/`tests` tables, retention and GDPR handling. |
 | B5 | Ownership and robustness | Sprint milestone reports, retrospectives (`docs/retrospectives/`), ADRs and the OTJ logs record decisions and follow-through on action items. |
-| S5 | Conduct a range of test types | `docs/testing-strategy.md` maps unit, integration, system, UAT, security, performance, non-functional and regression testing to their evidence; Vitest suite (39 tests) and `docs/uat/uat-scripts.md` cover execution. |
-| K9 | Algorithms, logic and data structures | `docs/algorithms-and-data-structures.md` covers the Map-backed board registry, B-tree indexing, fixed-offset binary parsing, regex validation, sorting and grouping, and mid-test fault handling. |
-| S16 | Apply algorithms, logic and data structures | Same artefact — the choices are applied in `mock-dll.ts`, `real-dll.ts`, `report.ts` and `validation.ts`, and each is backed by tests. |
+| S5 | Conduct a range of test types | `docs/testing-strategy.md` maps unit, integration, system, UAT, security, performance, non-functional and regression testing to their evidence; Vitest suite (51 tests across 12 files, including the live `real-dll.integration` suite) and `docs/uat/uat-scripts.md` cover execution. |
+| K9 | Algorithms, logic and data structures | `docs/algorithms-and-data-structures.md` covers the Map-backed board registry, B-tree indexing, fixed-offset binary parsing, status-word decode table and classification scans, lowest-free-slot serial allocation, regex validation, sorting and grouping, and mid-test fault handling. |
+| S16 | Apply algorithms, logic and data structures | Same artefact — the choices are applied in `mock-dll.ts`, `real-dll.ts`, `report.ts`, `shared/status.ts`, `shared/history.ts` and `validation.ts`, and each is backed by tests; ADRs 009–011 record the stage-2 design decisions. |
 | K2 | Roles and responsibilities within the SDLC | PID section 3 (`PROJECT_INITIATION.md`) maps roles to each SDLC stage — Jeff owns requirements and acceptance, Greg owns design through maintenance. |
 | K3 | The project life-cycle within the organisation and my role | PID sections 3–4 place the project inside JJ Confederation's delivery context and define my role as developer across the full life-cycle. |
 | S11 | Apply an appropriate development paradigm | PID section 7 records the paradigm choice — event-driven IPC/React on top of an interface-based (OOP) native and persistence layer. |
