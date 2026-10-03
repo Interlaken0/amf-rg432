@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isValidSerial } from '../shared/validation';
+import { displayStatus, filterTestHistory } from '../shared/history';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
 /**
@@ -70,18 +71,7 @@ function App() {
     window.electronAPI.getFailurePercent().then(setFailurePercent);
   }, []);
 
-  const filteredHistory = history.filter((entry) => {
-    const query = historySearch.trim().toLowerCase();
-    if (!query) {
-      return true;
-    }
-    return (
-      entry.serialNumber.toLowerCase().includes(query) ||
-      entry.operator.toLowerCase().includes(query) ||
-      entry.status.includes(query) ||
-      new Date(entry.timestamp).toLocaleString().toLowerCase().includes(query)
-    );
-  });
+  const filteredHistory = filterTestHistory(history, historySearch);
 
   // History is newest-first; collapsed view shows a short preview while
   // searching always searches every record.
@@ -199,7 +189,7 @@ function App() {
     setError(null);
     setNotice(null);
     try {
-      const path = await window.electronAPI.exportBatchReport();
+      const path = await window.electronAPI.exportBatchReport(historySearch);
       if (path) {
         setNotice(`Batch report saved to ${path}`);
       }
@@ -333,7 +323,7 @@ function App() {
               {regMessage && (
                 <p
                   role="status"
-                  className={`rounded-lg border px-3 py-2 text-xs ${
+                  className={`rounded-xl border px-4 py-3 text-sm ${
                     regMessage.kind === 'ok'
                       ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
                       : regMessage.kind === 'warn'
@@ -482,12 +472,14 @@ function App() {
                         <span
                           title={entry.testSummary ?? undefined}
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            entry.status === 'pass'
+                            displayStatus(entry) === 'pass'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                              : displayStatus(entry) === 'retest'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                           }`}
                         >
-                          ● {entry.status}
+                          ● {displayStatus(entry)}
                         </span>
                       </td>
                       <td className="py-2 pr-4">{entry.operator}</td>
