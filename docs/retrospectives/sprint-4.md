@@ -1,6 +1,6 @@
 # Sprint 4 Retrospective
 
-**Dates:** 18 September – 3 October 2026  
+**Dates:** 25 September – 3 October 2026 (planned 25 Sep – 1 Oct; completed 3 Oct with the stage-2 scope Jeff delivered mid-sprint)  
 **Sprint Goal:** Complete the stage-2 upgrade to `RG432Test1.1.dll` — live DLL calls, status-word verdicts, New Board flow, failure-% control — and take the application to a UAT-ready, installed state.
 
 ## What went well
