@@ -45,6 +45,10 @@ function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [confirmReRegister, setConfirmReRegister] = useState(false);
+  const [regMessage, setRegMessage] = useState<{
+    kind: 'ok' | 'warn' | 'err';
+    text: string;
+  } | null>(null);
   const [failurePercent, setFailurePercent] = useState(20);
 
   const trimmedSerial = serialNumber.trim();
@@ -104,6 +108,7 @@ function App() {
       setSerialNumber(await window.electronAPI.nextBoardSerial());
       setConfirmReRegister(false);
       setResult(null);
+      setRegMessage(null);
     } catch (err) {
       setError(`Could not generate a serial: ${errorMessage(err)}`);
     }
@@ -114,7 +119,10 @@ function App() {
    */
   const handleRegister = async (): Promise<void> => {
     if (!canRegister) {
-      setError('Enter a serial number and operator before registering.');
+      setRegMessage({
+        kind: 'err',
+        text: 'Enter a serial number and operator before registering.',
+      });
       return;
     }
 
@@ -129,16 +137,20 @@ function App() {
     try {
       if (!confirmReRegister && (await window.electronAPI.isBoardRegistered(trimmedSerial))) {
         setConfirmReRegister(true);
-        setNotice(
-          `Board ${trimmedSerial} is already registered. Click Confirm Registration to update it.`,
-        );
+        setRegMessage({
+          kind: 'warn',
+          text: `Board ${trimmedSerial} is already registered. Click Confirm Registration to update it.`,
+        });
         return;
       }
       await window.electronAPI.registerBoard(registration);
       setConfirmReRegister(false);
-      setNotice(`Board ${registration.serialNumber} registered and ready for testing.`);
+      setRegMessage({
+        kind: 'ok',
+        text: `Board ${registration.serialNumber} registered and ready for testing.`,
+      });
     } catch (err) {
-      setError(`Registration failed: ${errorMessage(err)}`);
+      setRegMessage({ kind: 'err', text: `Registration failed: ${errorMessage(err)}` });
     }
   };
 
@@ -279,6 +291,7 @@ function App() {
                   setSerialNumber(event.target.value);
                   setConfirmReRegister(false);
                   setResult(null);
+                  setRegMessage(null);
                 }}
                 type="text"
                 placeholder="Serial number (e.g. RG432-001)"
@@ -317,6 +330,20 @@ function App() {
                   {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
                 </button>
               </div>
+              {regMessage && (
+                <p
+                  role="status"
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    regMessage.kind === 'ok'
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : regMessage.kind === 'warn'
+                        ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
+                        : 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300'
+                  }`}
+                >
+                  {regMessage.text}
+                </p>
+              )}
             </div>
           </section>
 
