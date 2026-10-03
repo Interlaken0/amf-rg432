@@ -5,10 +5,12 @@ import { describe, it, expect } from 'vitest';
 import { buildBatchReportCsv, summariseTests } from '../src/main/report';
 import type { TestResult } from '../src/shared/types';
 
+// Timestamps omit 'Z' so new Date() parses them as local time — expected
+// CSV strings then hold in any test-runner timezone.
 const sampleTests: TestResult[] = [
-  { id: 1, serialNumber: 'RG432-0001', operator: 'Dave', timestamp: '2026-09-20T10:00:00Z', status: 'pass' },
-  { id: 2, serialNumber: 'RG432-0002', operator: 'Dave', timestamp: '2026-09-21T10:00:00Z', status: 'fail', diagnostics: 'Error flag 0x01' },
-  { id: 3, serialNumber: 'RG432-0003', operator: 'Sarah', timestamp: '2026-09-22T10:00:00Z', status: 'pass' },
+  { id: 1, serialNumber: 'RG432-0001', operator: 'Dave', timestamp: '2026-09-20T10:00:00', status: 'pass' },
+  { id: 2, serialNumber: 'RG432-0002', operator: 'Dave', timestamp: '2026-09-21T10:00:00', status: 'fail', diagnostics: 'Error flag 0x01' },
+  { id: 3, serialNumber: 'RG432-0003', operator: 'Sarah', timestamp: '2026-09-22T10:00:00', status: 'pass' },
 ];
 
 describe('summariseTests', () => {
@@ -46,11 +48,98 @@ describe('summariseTests', () => {
 describe('buildBatchReportCsv', () => {
   it('includes summary, operator stats and result rows', () => {
     const csv = buildBatchReportCsv(sampleTests, new Date('2026-09-25T12:00:00Z'));
+    expect(csv).toContain('SUMMARY');
+    expect(csv).toContain('OPERATOR BREAKDOWN');
+    expect(csv).toContain('FAILED TESTS');
+    expect(csv).toContain('TEST RESULTS');
     expect(csv).toContain('Total Tests,3');
     expect(csv).toContain('Pass Rate,66.7%');
-    expect(csv).toContain('Dave,2,1,1');
-    expect(csv).toContain('Sarah,1,1,0');
-    expect(csv).toContain('1,RG432-0001,Dave,2026-09-20T10:00:00Z,pass');
+    expect(csv).toContain('Dave,2,1,1,50.0%');
+    expect(csv).toContain('Sarah,1,1,0,100.0%');
+    expect(csv).toContain('1,RG432-0001,Dave,20/09/2026 10:00:00,pass');
+  });
+
+  it('maps stage-2 result fields into dedicated columns', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 7,
+          serialNumber: 'RG432-0007',
+          operator: 'Dave',
+          timestamp: '2026-09-25T09:00:00',
+          status: 'fail',
+          statusDetails: '0x2fff',
+          testSummary: 'Test 1 (input data acquisition): connexion faulty',
+          qa: [-0.4616, 0.5784, 0.4317, 1.151],
+          diagnostics:
+            'Details=0x2fff, summary="Test 1 (input data acquisition): connexion faulty", qa=[-0.4616,0.5784,0.4317,1.151], file=C:\\Users\\Greg\\AppData\\Roaming\\rg432-test-rig\\results\\260925-090000-RG432-0007.dat',
+        },
+      ],
+      new Date(),
+    );
+    // Digit 2 is a connexion-type fault - the Status cell reads 'retest'
+    // to match the in-app badge, and Notes carries the operator guidance
+    expect(csv).toContain(
+      '7,RG432-0007,Dave,25/09/2026 09:00:00,retest,0x2fff,Test 1 (input data acquisition): connexion faulty,-0.4616,0.5784,0.4317,1.151,260925-090000-RG432-0007.dat,Bad connexion - check the board and retest',
+    );
+  });
+
+  it('shows retest for retryable status words, fail for terminal ones', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 10,
+          serialNumber: 'RG432-0010',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:32:00',
+          status: 'fail',
+          statusDetails: '0x3fff',
+          testSummary: 'Test 1 (input data acquisition): board not communicating',
+        },
+        {
+          id: 11,
+          serialNumber: 'RG432-0011',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:33:00',
+          status: 'fail',
+          statusDetails: '0x7fff',
+          testSummary: 'Test 1 (input data acquisition): output waveform faulty',
+        },
+        {
+          id: 12,
+          serialNumber: 'RG432-0012',
+          operator: 'Greg',
+          timestamp: '2026-10-03T13:34:00',
+          status: 'pass',
+          statusDetails: '0x0000',
+          testSummary: 'All four tests passed',
+        },
+      ],
+      new Date(),
+    );
+    expect(csv).toContain(',RG432-0010,Greg,03/10/2026 13:32:00,retest,0x3fff');
+    expect(csv).toContain(',RG432-0011,Greg,03/10/2026 13:33:00,fail,0x7fff');
+    expect(csv).toContain(',RG432-0012,Greg,03/10/2026 13:34:00,pass,0x0000');
+    expect(csv).toContain('Bad connexion - check the board and retest');
+    expect(csv).toContain('Failed outright - start a new board');
+    expect(csv).toContain('Passed all four tests');
+  });
+
+  it('keeps unrecognised diagnostics in the notes column', () => {
+    const csv = buildBatchReportCsv(
+      [
+        {
+          id: 8,
+          serialNumber: 'RG432-0008',
+          operator: 'Dave',
+          timestamp: 't',
+          status: 'fail',
+          diagnostics: 'Mock failure: simulated DLL returned error flag 0x01',
+        },
+      ],
+      new Date(),
+    );
+    expect(csv).toContain(',Mock failure: simulated DLL returned error flag 0x01');
   });
 
   it('escapes commas and quotes in cell values', () => {
@@ -62,12 +151,12 @@ describe('buildBatchReportCsv', () => {
     expect(csv).toContain('"said ""no"""');
   });
 
-  it('wraps all-digit serials so Excel keeps them as text', () => {
+  it('prefixes all-digit serials so Excel cannot number-convert them', () => {
     const csv = buildBatchReportCsv(
       [{ id: 9, serialNumber: '1111111111111', operator: 'Sarah', timestamp: 't', status: 'pass' }],
       new Date(),
     );
-    expect(csv).toContain('="1111111111111"');
+    expect(csv).toContain(',SN-1111111111111,');
     expect(csv).not.toContain(',1111111111111,');
   });
 });

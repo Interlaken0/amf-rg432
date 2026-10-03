@@ -12,10 +12,13 @@ declare global {
       registerBoard: (registration: BoardRegistration) => Promise<void>;
       runTest: (serialNumber: string) => Promise<TestResult>;
       isBoardRegistered: (serialNumber: string) => Promise<boolean>;
+      nextBoardSerial: () => Promise<string>;
       getTestHistory: () => Promise<TestResult[]>;
       getMockMode: () => Promise<boolean>;
       setMockMode: (enabled: boolean) => Promise<boolean>;
-      exportBatchReport: () => Promise<string | null>;
+      getFailurePercent: () => Promise<number>;
+      setFailurePercent: (percent: number) => Promise<number>;
+      exportBatchReport: (query: string) => Promise<string | null>;
     };
   }
 }

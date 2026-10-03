@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { BoardRegistration, DllInterop, TestResult } from '../shared/types';
+import type { DllInterop } from '../shared/types';
 import { createMockDllInterop } from './mock-dll';
 import { createRealDllInterop } from './real-dll';
 
@@ -14,11 +14,11 @@ function isRealDllAvailable(): boolean {
   }
 
   const candidates = [
-    join(process.cwd(), 'dll', 'RG432Test1.0.dll'),
+    join(process.cwd(), 'dll', 'RG432Test1.1.dll'),
     join(
       (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '',
       'dll',
-      'RG432Test1.0.dll',
+      'RG432Test1.1.dll',
     ),
   ];
 
@@ -43,5 +43,3 @@ export function createDllInterop(options?: DllInteropOptions): DllInterop {
   }
   return createMockDllInterop();
 }
-
-export type { BoardRegistration, TestResult };

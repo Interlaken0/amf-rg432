@@ -11,12 +11,14 @@ import {
   saveBoard,
   saveTest,
   getTests,
+  nextBoardSerial,
 } from './test-repository';
 import { createDllInterop } from '../native/dll-interop';
 import { createSettingsStore } from './settings';
 import { createDiagnosticLogger } from './diagnostics';
 import { buildBatchReportCsv } from './report';
 import { isValidSerial } from '../shared/validation';
+import { filterTestHistory } from '../shared/history';
 import type { TestResult, BoardRegistration } from '../shared/types';
 
 if (process.env.VITE_DEV_SERVER_URL) {
@@ -40,7 +42,7 @@ function createWindow(): void {
     height: 768,
     title: 'AMF RG432 Test Rig',
     webPreferences: {
-      preload: join(__dirname, '../preload/preload.js'),
+      preload: join(__dirname, '../preload/preload.cjs.js'),
       contextIsolation: true,
       sandbox: true,
     },
@@ -109,6 +111,20 @@ ipcMain.handle('set-mock-mode', async (_event, enabled: boolean): Promise<boolea
 });
 
 /**
+ * IPC handler for getting the fault-injection failure percentage
+ */
+ipcMain.handle('get-failure-percent', async (): Promise<number> => {
+  return settings.get().failurePercent;
+});
+
+/**
+ * IPC handler for setting the fault-injection failure percentage (0-100)
+ */
+ipcMain.handle('set-failure-percent', async (_event, percent: number): Promise<number> => {
+  return settings.setFailurePercent(Number(percent)).failurePercent;
+});
+
+/**
  * IPC handler for board registration
  */
 ipcMain.handle('register-board', async (_event, registration: BoardRegistration): Promise<void> => {
@@ -133,6 +149,13 @@ ipcMain.handle('board-exists', async (_event, serialNumber: string): Promise<boo
 });
 
 /**
+ * IPC handler for generating the next free RG432-XXXX board serial
+ */
+ipcMain.handle('next-board-serial', async (): Promise<string> => {
+  return nextBoardSerial();
+});
+
+/**
  * IPC handler for running a test
  */
 ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestResult> => {
@@ -142,13 +165,24 @@ ipcMain.handle('run-test', async (_event, serialNumber: string): Promise<TestRes
   }
 
   try {
-    const result = await dllInterop.runTest(serialNumber);
+    const result = await dllInterop.runTest(serialNumber, settings.get().failurePercent);
     const resultWithOperator = { ...result, operator: board.operator };
     saveTest(resultWithOperator);
     return resultWithOperator;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     const logPath = diagnostics.write(`run-test serial=${serialNumber}`, error);
-    throw new Error(`Test failed: ${error instanceof Error ? error.message : String(error)}. Diagnostic log: ${logPath}`);
+    // Record the aborted attempt - a board that errored mid-test still
+    // needs a traceable record, so it is saved as a fail.
+    saveTest({
+      id: 0,
+      serialNumber,
+      operator: board.operator,
+      timestamp: new Date().toISOString(),
+      status: 'fail',
+      diagnostics: `Test aborted: ${message} (diagnostic log: ${logPath})`,
+    });
+    throw new Error(`Test failed: ${message}. Diagnostic log: ${logPath}`);
   }
 });
 
@@ -162,15 +196,17 @@ ipcMain.handle('get-test-history', async (): Promise<TestResult[]> => {
 /**
  * IPC handler for exporting a batch report CSV via a save dialog
  */
-ipcMain.handle('export-batch-report', async (): Promise<string | null> => {
+ipcMain.handle('export-batch-report', async (_event, query: string): Promise<string | null> => {
   if (!mainWindow) {
     return null;
   }
 
-  const date = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const stamp = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
   const saveResult = await dialog.showSaveDialog(mainWindow, {
     title: 'Export Batch Report',
-    defaultPath: `rg432-batch-report-${date}.csv`,
+    defaultPath: `rg432-batch-report-${stamp}.csv`,
     filters: [{ name: 'CSV Report', extensions: ['csv'] }],
   });
 
@@ -178,7 +214,7 @@ ipcMain.handle('export-batch-report', async (): Promise<string | null> => {
     return null;
   }
 
-  const csv = buildBatchReportCsv(getTests(), new Date());
+  const csv = buildBatchReportCsv(filterTestHistory(getTests(), query ?? ''), new Date());
   writeFileSync(saveResult.filePath, csv);
   return saveResult.filePath;
 });

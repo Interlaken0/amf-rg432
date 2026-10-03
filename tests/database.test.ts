@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
-import { getDatabase, setDatabase } from '../src/main/database';
+import { getDatabase, setDatabase } from '../src/main/db-instance';
 
 /**
  * Test suite for database functions

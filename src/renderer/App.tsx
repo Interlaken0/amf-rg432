@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isValidSerial } from '../shared/validation';
+import { displayStatus, filterTestHistory } from '../shared/history';
 import type { BoardRegistration, TestResult } from '../shared/types';
 
 /**
@@ -12,6 +13,15 @@ const THEME_KEY = 'rg432-theme';
 /**
  * Read the saved theme or fall back to the OS preference
  */
+/**
+ * Unwrap the "Error invoking remote method '...': Error:" prefix Electron
+ * adds to IPC handler rejections, leaving the operator-facing message
+ */
+function errorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.replace(/^Error invoking remote method '[^']+':\s*/, '').replace(/^Error:\s*/, '');
+}
+
 function initialTheme(): Theme {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') {
@@ -29,17 +39,26 @@ function App() {
   const [result, setResult] = useState<TestResult | null>(null);
   const [history, setHistory] = useState<TestResult[]>([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [mockMode, setMockMode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [confirmReRegister, setConfirmReRegister] = useState(false);
+  const [regMessage, setRegMessage] = useState<{
+    kind: 'ok' | 'warn' | 'err';
+    text: string;
+  } | null>(null);
+  const [failurePercent, setFailurePercent] = useState(20);
 
   const trimmedSerial = serialNumber.trim();
   const serialInvalid = trimmedSerial.length > 0 && !isValidSerial(trimmedSerial);
   const canRegister = isValidSerial(trimmedSerial) && operator.trim().length > 0;
-  const canTest = serialNumber.trim().length > 0 && !isRunning;
+  // A pass or terminal (non-retryable) fail ends this board's flow; only a
+  // retryable connexion fail keeps Start Test enabled (TestScheduleNotes §9).
+  const boardDone = result !== null && !result.retryable;
+  const canTest = trimmedSerial.length > 0 && !isRunning && !boardDone;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -49,19 +68,18 @@ function App() {
   useEffect(() => {
     window.electronAPI.getMockMode().then(setMockMode);
     window.electronAPI.getTestHistory().then(setHistory);
+    window.electronAPI.getFailurePercent().then(setFailurePercent);
   }, []);
 
-  const filteredHistory = history.filter((entry) => {
-    const query = historySearch.trim().toLowerCase();
-    if (!query) {
-      return true;
-    }
-    return (
-      entry.serialNumber.toLowerCase().includes(query) ||
-      entry.operator.toLowerCase().includes(query) ||
-      entry.status.includes(query)
-    );
-  });
+  const filteredHistory = filterTestHistory(history, historySearch);
+
+  // History is newest-first; collapsed view shows a short preview while
+  // searching always searches every record.
+  const HISTORY_PREVIEW = 5;
+  const searching = historySearch.trim().length > 0;
+  const visibleHistory =
+    historyExpanded || searching ? filteredHistory : filteredHistory.slice(0, HISTORY_PREVIEW);
+  const hiddenCount = filteredHistory.length - visibleHistory.length;
 
   /**
    * Handle mock mode toggle
@@ -71,11 +89,30 @@ function App() {
   };
 
   /**
+   * Generate the next free RG432-XXXX serial into the serial field
+   */
+  const handleNewBoard = async (): Promise<void> => {
+    setError(null);
+    setNotice(null);
+    try {
+      setSerialNumber(await window.electronAPI.nextBoardSerial());
+      setConfirmReRegister(false);
+      setResult(null);
+      setRegMessage(null);
+    } catch (err) {
+      setError(`Could not generate a serial: ${errorMessage(err)}`);
+    }
+  };
+
+  /**
    * Handle board registration
    */
   const handleRegister = async (): Promise<void> => {
     if (!canRegister) {
-      setError('Enter a serial number and operator before registering.');
+      setRegMessage({
+        kind: 'err',
+        text: 'Enter a serial number and operator before registering.',
+      });
       return;
     }
 
@@ -90,16 +127,20 @@ function App() {
     try {
       if (!confirmReRegister && (await window.electronAPI.isBoardRegistered(trimmedSerial))) {
         setConfirmReRegister(true);
-        setNotice(
-          `Board ${trimmedSerial} is already registered. Click Confirm Registration to update it.`,
-        );
+        setRegMessage({
+          kind: 'warn',
+          text: `Board ${trimmedSerial} is already registered. Click Confirm Registration to update it.`,
+        });
         return;
       }
       await window.electronAPI.registerBoard(registration);
       setConfirmReRegister(false);
-      setNotice(`Board ${registration.serialNumber} registered and ready for testing.`);
+      setRegMessage({
+        kind: 'ok',
+        text: `Board ${registration.serialNumber} registered and ready for testing.`,
+      });
     } catch (err) {
-      setError(`Registration failed: ${err instanceof Error ? err.message : String(err)}`);
+      setRegMessage({ kind: 'err', text: `Registration failed: ${errorMessage(err)}` });
     }
   };
 
@@ -121,10 +162,24 @@ function App() {
       setResult(testResult);
       setHistory(await window.electronAPI.getTestHistory());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsRunning(false);
     }
+  };
+
+  /**
+   * Persist a new overall failure-percentage target (0-100, per Jeff's
+   * byType semantics); invalid input reverts to the saved value
+   */
+  const handleFailurePercent = async (value: string): Promise<void> => {
+    const percent = Number(value);
+    if (!Number.isFinite(percent)) {
+      setFailurePercent(await window.electronAPI.getFailurePercent());
+      return;
+    }
+    const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+    setFailurePercent(await window.electronAPI.setFailurePercent(clamped));
   };
 
   /**
@@ -134,12 +189,12 @@ function App() {
     setError(null);
     setNotice(null);
     try {
-      const path = await window.electronAPI.exportBatchReport();
+      const path = await window.electronAPI.exportBatchReport(historySearch);
       if (path) {
         setNotice(`Batch report saved to ${path}`);
       }
     } catch (err) {
-      setError(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Export failed: ${errorMessage(err)}`);
     }
   };
 
@@ -225,10 +280,13 @@ function App() {
                 onChange={(event) => {
                   setSerialNumber(event.target.value);
                   setConfirmReRegister(false);
+                  setResult(null);
+                  setRegMessage(null);
                 }}
                 type="text"
                 placeholder="Serial number (e.g. RG432-001)"
                 aria-label="Serial number"
+                disabled={isRunning}
               />
               <input
                 className={inputClass}
@@ -237,26 +295,66 @@ function App() {
                 type="text"
                 placeholder="Operator name"
                 aria-label="Operator name"
+                disabled={isRunning}
               />
               {serialInvalid && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Letters, numbers and dashes only (3–32 characters), e.g. RG432-001.
                 </p>
               )}
-              <button
-                onClick={handleRegister}
-                type="button"
-                disabled={!canRegister}
-                className={confirmReRegister ? buttonWarn : buttonPrimary}
-              >
-                {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleNewBoard}
+                  type="button"
+                  disabled={isRunning}
+                  className={buttonSecondary}
+                >
+                  New Board
+                </button>
+                <button
+                  onClick={handleRegister}
+                  type="button"
+                  disabled={!canRegister || isRunning}
+                  className={(confirmReRegister ? buttonWarn : buttonPrimary) + ' flex-1'}
+                >
+                  {confirmReRegister ? 'Confirm Registration' : 'Register Board'}
+                </button>
+              </div>
+              {regMessage && (
+                <p
+                  role="status"
+                  className={`rounded-xl border px-4 py-3 text-sm ${
+                    regMessage.kind === 'ok'
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : regMessage.kind === 'warn'
+                        ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
+                        : 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300'
+                  }`}
+                >
+                  {regMessage.text}
+                </p>
+              )}
             </div>
           </section>
 
           {/* Test execution */}
           <section className={card}>
             <h2 className={heading}>Run Test</h2>
+            <label className="mb-3 flex items-center justify-between gap-3 text-sm">
+              <span className="text-zinc-600 dark:text-zinc-400">
+                Failure % (0–100)
+              </span>
+              <input
+                className={inputClass + ' w-20 text-right'}
+                type="number"
+                min={0}
+                max={100}
+                value={failurePercent}
+                onChange={(event) => handleFailurePercent(event.target.value)}
+                aria-label="Failure percentage"
+                disabled={isRunning}
+              />
+            </label>
             <button
               onClick={handleTest}
               type="button"
@@ -278,19 +376,36 @@ function App() {
                 className={`mt-4 rounded-xl border-2 px-4 py-5 text-center ${
                   result.status === 'pass'
                     ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                    : 'border-rose-500 bg-rose-50 dark:bg-rose-950/40'
+                    : result.retryable
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40'
+                      : 'border-rose-500 bg-rose-50 dark:bg-rose-950/40'
                 }`}
               >
                 <p
                   className={`text-4xl font-extrabold tracking-widest ${
                     result.status === 'pass'
                       ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-rose-600 dark:text-rose-400'
+                      : result.retryable
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  {result.status === 'pass' ? '✓ PASS' : '✗ FAIL'}
+                  {result.status === 'pass' ? '✓ PASS' : result.retryable ? '⚠ RETEST' : '✗ FAIL'}
                 </p>
-                {result.diagnostics && (
+                {result.testSummary && (
+                  <p className="mt-3 text-sm font-medium">{result.testSummary}</p>
+                )}
+                {result.statusDetails && (
+                  <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    {result.statusDetails}
+                  </p>
+                )}
+                {result.retryable && (
+                  <p className="mt-3 text-xs">
+                    Bad connexion — check the board and start the test again.
+                  </p>
+                )}
+                {result.diagnostics && !result.testSummary && (
                   <p className="mt-3 break-all text-left text-xs text-zinc-500 dark:text-zinc-400">
                     {result.diagnostics}
                   </p>
@@ -322,11 +437,12 @@ function App() {
               <h2 className={heading + ' mb-0'}>Test History</h2>
               <div className="flex items-center gap-2">
                 <input
-                  className={inputClass + ' w-56'}
+                  className={inputClass + ' w-72'}
                   value={historySearch}
                   onChange={(event) => setHistorySearch(event.target.value)}
                   type="search"
-                  placeholder="Search serial, operator, status…"
+                  placeholder="Search history…"
+                  title="Search by serial, operator, status, or date/time"
                   aria-label="Search test history"
                 />
                 <button onClick={handleExportReport} type="button" className={buttonSecondary}>
@@ -346,7 +462,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHistory.map((entry) => (
+                  {visibleHistory.map((entry) => (
                     <tr
                       key={entry.id}
                       className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
@@ -354,13 +470,16 @@ function App() {
                       <td className="py-2 pr-4 font-mono text-xs sm:text-sm">{entry.serialNumber}</td>
                       <td className="py-2 pr-4">
                         <span
+                          title={entry.testSummary ?? undefined}
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            entry.status === 'pass'
+                            displayStatus(entry) === 'pass'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                              : displayStatus(entry) === 'retest'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                           }`}
                         >
-                          {entry.status === 'pass' ? '●' : '●'} {entry.status}
+                          ● {displayStatus(entry)}
                         </span>
                       </td>
                       <td className="py-2 pr-4">{entry.operator}</td>
@@ -375,6 +494,32 @@ function App() {
                         {history.length === 0
                           ? 'No tests recorded yet.'
                           : 'No records match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                  {hiddenCount > 0 && (
+                    <tr>
+                      <td colSpan={4} className="pt-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryExpanded(true)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          View all {filteredHistory.length} results ({hiddenCount} more) ↓
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  {historyExpanded && !searching && filteredHistory.length > HISTORY_PREVIEW && (
+                    <tr>
+                      <td colSpan={4} className="pt-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryExpanded(false)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          Show recent {HISTORY_PREVIEW} only ↑
+                        </button>
                       </td>
                     </tr>
                   )}

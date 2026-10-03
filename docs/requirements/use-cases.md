@@ -24,7 +24,7 @@ These use cases describe the main interactions between the factory operator and 
 **Alternative flows:**
 
 - **2a. Serial number already registered:** The application warns Dave and asks whether to continue or re-enter.
-- **2b. Serial number format invalid:** The application highlights the field and asks Dave to correct it.
+- **2b. Serial number format invalid:** The application shows a validation message asking Dave to correct it, and nothing is saved.
 
 **Postconditions:**
 
@@ -56,6 +56,7 @@ These use cases describe the main interactions between the factory operator and 
 
 - **4a. DLL call fails unexpectedly:** The application shows an error, exports a diagnostic log, and records the failure.
 - **4b. Mock mode is active:** The application uses the mock DLL and returns a simulated result.
+- **4c. Connexion-type fault:** If the result contains a retryable fault (no status digit 6–9, per Jeff's rule), the application shows an amber RETEST result with a "bad connexion" prompt and keeps Start Test enabled so Dave can check the board and re-run immediately.
 
 **Postconditions:**
 
