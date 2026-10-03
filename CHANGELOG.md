@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.9](https://github.com/Interlaken0/amf-rg432/compare/v0.0.8...v0.0.9) (2026-10-03)
+
+
+### Documentation
+
+* add portfolio evidence pack with labelled screenshots and section write-ups ([1086656](https://github.com/Interlaken0/amf-rg432/commits/10866564e3af230644fd5d91f74451252006ea2f))
+
 ## [0.0.8](https://github.com/Interlaken0/amf-rg432/compare/v0.0.7...v0.0.8) (2026-10-03)
 
 
