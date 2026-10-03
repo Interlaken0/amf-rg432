@@ -23,6 +23,7 @@ Updated September 2026 to document the as-built Tailwind interface.
 |                                  |                                             |
 |  RUN TEST                        |                                             |
 |  +----------------------------+  |                                             |
+|  | Failure % [ 20        ]    |  |                                             |
 |  | (      Start Test      )   |  |                                             |
 |  |  spinner "in progress…"    |  |                                             |
 |  | +------------------------+ |  |                                             |
@@ -45,10 +46,11 @@ Updated September 2026 to document the as-built Tailwind interface.
 | Operator input | Records who ran the work | User Story 1; K8 data protection note in ADR 002 |
 | Registration confirmation | Success banner after registering | Use Case 1 step 6 |
 | Start Test button | Triggers test; disabled while running | Use Case 2 step 2 |
-| Progress spinner | Animated indicator during the ~7s run | Use Case 2 step 3; Dave needs obvious feedback |
+| Failure % input | Demo/UAT control (0-100) passed to `RunTest` as `byType`; persisted | Jeff's New-UPDATE contract |
+| Progress spinner | Animated indicator during the ~4s run | Use Case 2 step 3; Dave needs obvious feedback |
 | PASS/RETEST/FAIL badge | Large colour-coded result: emerald pass, amber retest (connexion-type faults), rose fail + decoded summary | Use Case 2 steps 6–7; Use Case 3; retry flow from TestScheduleNotes |
 | Error banner | Operator-readable failure messages incl. diagnostic log path | Use Case 2 alternative 4a |
-| History search field | Filters records by serial, operator, or status | Use Case 4; User Story "search test history" |
+| History search field | Filters records by serial, operator, status, or date/time; export follows the filter | Use Case 4; User Story "search test history" |
 | History table | Persistent record with status pills; latest 5 shown, "View all" expands | Use Case 4 |
 | Export CSV button | Saves batch report via save dialog | Use Case 4 alternative 3b; Use Case 5 |
 

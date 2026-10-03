@@ -24,7 +24,7 @@ These use cases describe the main interactions between the factory operator and 
 **Alternative flows:**
 
 - **2a. Serial number already registered:** The application warns Dave and asks whether to continue or re-enter.
-- **2b. Serial number format invalid:** The application highlights the field and asks Dave to correct it.
+- **2b. Serial number format invalid:** The application shows a validation message asking Dave to correct it, and nothing is saved.
 
 **Postconditions:**
 
