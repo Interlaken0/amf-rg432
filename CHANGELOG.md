@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.10](https://github.com/Interlaken0/amf-rg432/compare/v0.0.9...v0.0.10) (2026-10-04)
+
+
+### Documentation
+
+* update test count in readme to 52 ([e8e3c12](https://github.com/Interlaken0/amf-rg432/commits/e8e3c125e0d92157cb09ff921207607b4d7e6822))
+
 ## [0.0.9](https://github.com/Interlaken0/amf-rg432/compare/v0.0.8...v0.0.9) (2026-10-03)
 
 
