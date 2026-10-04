@@ -31,7 +31,7 @@ demo/UAT dial for exercising the failure paths, per Jeff's update.
 ```powershell
 npm ci          # install deps (postinstall rebuilds native modules for Electron)
 npm run dev     # rebuild natives for Electron and launch the dev app
-npm test        # rebuild natives for Node and run the test suite (51 tests)
+npm test        # rebuild natives for Node and run the test suite (52 tests)
 npm run seed    # populate the database with demo boards and results
 npm run build   # type-check, bundle, and produce the Windows installer
 ```
