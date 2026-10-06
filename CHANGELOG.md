@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.12](https://github.com/Interlaken0/amf-rg432/compare/v0.0.11...v0.0.12) (2026-10-06)
+
+
+### Documentation
+
+* add consolidated functional and non-functional requirements ([f020870](https://github.com/Interlaken0/amf-rg432/commits/f020870fa747b62324bbe3b5a75ce41fbd60d1f5))
+
 ## [0.0.11](https://github.com/Interlaken0/amf-rg432/compare/v0.0.10...v0.0.11) (2026-10-06)
 
 
