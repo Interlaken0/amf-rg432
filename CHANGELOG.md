@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.11](https://github.com/Interlaken0/amf-rg432/compare/v0.0.10...v0.0.11) (2026-10-06)
+
+
+### Documentation
+
+* record UAT sign-off and add workflow diagram ([07961a7](https://github.com/Interlaken0/amf-rg432/commits/07961a737e37e522c52bd4131b4914a6e8b02bf4))
+
 ## [0.0.10](https://github.com/Interlaken0/amf-rg432/compare/v0.0.9...v0.0.10) (2026-10-04)
 
 
