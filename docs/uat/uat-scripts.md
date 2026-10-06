@@ -9,18 +9,18 @@
 
 | # | Result (Pass/Fail) | Notes |
 |---|--------------------|-------|
-| UAT-01 | | |
-| UAT-02 | | |
-| UAT-03 | | |
-| UAT-04 | | |
-| UAT-05 | | |
-| UAT-06 | | |
-| UAT-07 | | |
-| UAT-08 | | |
-| UAT-09 | | |
-| UAT-10 | | |
-| UAT-11 | | |
-| UAT-12 | | |
+| UAT-01 | Pass | Installer ran cleanly; main window opened with all expected panels |
+| UAT-02 | Pass | Board registered; confirmation banner shown |
+| UAT-03 | Pass | Register Board disabled with empty fields; no record created |
+| UAT-04 | Pass | Progress and colour-coded result badge behaved as expected |
+| UAT-05 | Pass | Clear error shown; nothing written to history |
+| UAT-06 | Pass | Diagnostic log written under userData/logs/; abort recorded as fail |
+| UAT-07 | Pass | History persisted after restart; View all expands full log |
+| UAT-08 | Pass | CSV opened cleanly in Excel; serials intact, no scientific notation |
+| UAT-09 | Pass | Search filtered correctly incl. older records; clearing restored preview |
+| UAT-10 | Pass | Theme switched and persisted after restart |
+| UAT-11 | Pass | Lowest free serial (RG432-0003) offered; overtype worked |
+| UAT-12 | Pass | Amber RETEST badge with correct message; attempt logged as fail |
 
 ---
 
@@ -115,6 +115,6 @@
 | | |
 |---|---|
 | Tester | Jeff |
-| Date | |
-| Result | Accepted / Accepted with notes / Rejected |
-| Notes | |
+| Date | 06/10/2026 |
+| Result | Accepted |
+| Notes | All 12 UAT scripts executed and passed; accepted for factory deployment |
