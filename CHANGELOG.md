@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.13](https://github.com/Interlaken0/amf-rg432/compare/v0.0.12...v0.0.13) (2026-11-16)
+
+
+### Documentation
+
+* add sequence diagram screenshot ([dba3375](https://github.com/Interlaken0/amf-rg432/commits/dba3375fe52b8eee3b7e96930b25715fd413a97a))
+* remove outdated workflow diagram ([ba4ddde](https://github.com/Interlaken0/amf-rg432/commits/ba4ddde1d001597ab9cfb4b147f8cafd2c87777d))
+
 ## [0.0.12](https://github.com/Interlaken0/amf-rg432/compare/v0.0.11...v0.0.12) (2026-10-06)
 
 
